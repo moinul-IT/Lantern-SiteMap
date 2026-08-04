@@ -42,7 +42,9 @@ export default function SearchField({ value, onChange }: Props) {
         }}
         placeholder="Search sites or addresses"
         aria-label="Search sites or addresses"
-        className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-faint focus:outline-none [&::-webkit-search-cancel-button]:appearance-none"
+        /* 16px on mobile is required — anything smaller makes iOS Safari zoom
+           the whole page when the field takes focus. */
+        className="min-w-0 flex-1 bg-transparent text-base text-ink placeholder:text-ink-faint focus:outline-none md:text-sm [&::-webkit-search-cancel-button]:appearance-none"
       />
       <kbd className="hidden shrink-0 font-mono text-[10px] tracking-wider text-ink-faint sm:block">
         ⌘K

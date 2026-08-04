@@ -115,9 +115,13 @@ export default function AllSitesView({
                     onClick={() => onSelect(place.id)}
                     aria-label={`View details for ${place.name}`}
                     className={[
-                      "flex w-full items-start gap-3 px-5 py-3.5 text-left transition-colors duration-200",
+                      "flex min-h-[56px] w-full items-start gap-3 px-5 py-3.5 text-left transition-colors duration-200",
                       "focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40",
-                      active ? "bg-cream-deep/60" : "hover:bg-cream/70",
+                      // active: gives touch users immediate tap feedback, since
+                      // :hover never fires on a finger.
+                      active
+                        ? "bg-cream-deep/60"
+                        : "active:bg-cream-deep/70 hover:bg-cream/70",
                     ].join(" ")}
                   >
                     <span className="min-w-0 flex-1">

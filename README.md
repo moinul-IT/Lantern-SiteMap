@@ -108,6 +108,23 @@ Nearest-neighbour distances are computed against all 21 sites regardless of the
 active filter, so a site's closest neighbour can be in another borough (Leeward
 Hall → Schafer Hall, Laurel Hall → Euclid-Glenmore).
 
+## Mobile
+
+Designed mobile-first from ~375px up, portrait and landscape.
+
+- `viewportFit: "cover"` in `app/layout.tsx` is what makes `env(safe-area-inset-*)`
+  return real values; the `.safe-t` / `.safe-b` / `.safe-x` helpers in
+  `globals.css` keep chrome off the notch and home indicator.
+- The title card collapses to a compact pill (eyebrow hidden, 17px title).
+- Borough chips become a single non-wrapping rail that scrolls with momentum.
+- The legend collapses behind a tappable "Legend" pill.
+- `DetailPanel` is one component: a bottom sheet with a grab handle and
+  drag-to-dismiss below `md`, the floating right-hand panel above it.
+- Tap targets are ≥44px, and the search input is 16px on mobile because anything
+  smaller makes iOS Safari zoom the page on focus.
+- Landscape phones put the title and controls on one row, cutting chrome from 42%
+  to 29% of a 375px-tall viewport.
+
 ## The admin office
 
 The main office (575 8th Avenue, Floor 15) is **not** part of `SITES` — it isn't

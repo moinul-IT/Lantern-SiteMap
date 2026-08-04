@@ -104,15 +104,38 @@ function FitToSites({
   return null;
 }
 
-/** Keeps Leaflet's internal size in sync when the container resizes. */
+/**
+ * Keeps Leaflet's internal size in sync. The ResizeObserver covers layout
+ * changes; the orientation/resize listeners cover mobile browsers that rotate or
+ * collapse their URL bar without the container box changing in time, which is
+ * what leaves the map rendering half-blank.
+ */
 function ResizeWatcher() {
   const map = useMap();
 
   useEffect(() => {
     const container = map.getContainer();
-    const observer = new ResizeObserver(() => map.invalidateSize());
+    const refresh = () => map.invalidateSize({ animate: false });
+
+    const observer = new ResizeObserver(refresh);
     observer.observe(container);
-    return () => observer.disconnect();
+
+    // Orientation changes settle a frame or two after the event fires.
+    const onOrientation = () => {
+      refresh();
+      window.setTimeout(refresh, 250);
+    };
+
+    window.addEventListener("orientationchange", onOrientation);
+    window.addEventListener("resize", refresh);
+    window.visualViewport?.addEventListener("resize", refresh);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("orientationchange", onOrientation);
+      window.removeEventListener("resize", refresh);
+      window.visualViewport?.removeEventListener("resize", refresh);
+    };
   }, [map]);
 
   return null;
@@ -140,6 +163,13 @@ export default function SiteMap({
       maxZoom={18}
       zoomControl={false}
       scrollWheelZoom
+      // Explicit so touch behaviour can't regress: one-finger drag, pinch zoom,
+      // double-tap zoom. `tap` is left off — Leaflet's simulator double-fires
+      // clicks on modern mobile browsers, which made markers hard to select.
+      dragging
+      touchZoom
+      doubleClickZoom
+      tapHold={false}
       className="h-full w-full"
     >
       <TileLayer

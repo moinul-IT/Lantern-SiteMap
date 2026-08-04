@@ -136,7 +136,9 @@ export default function SiteExplorer() {
   const controls = (
     <>
       <ViewToggle value={view} onChange={setView} />
-      <div className="w-full sm:w-[300px]">
+      {/* Full-width on portrait phones (its own row); from sm up it shrinks to
+          share a row with the toggle rather than wrapping. */}
+      <div className="w-full min-w-0 sm:w-auto sm:flex-1 md:w-[300px] md:flex-none">
         <SearchField value={query} onChange={setQuery} />
       </div>
     </>
@@ -151,7 +153,7 @@ export default function SiteExplorer() {
           exit={{ opacity: 0, transition: { duration: 0.16 } }}
           transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
           onClick={closeDetail}
-          className="fixed inset-0 z-[900] flex overflow-y-auto bg-ink/25 p-4 backdrop-blur-[3px] sm:p-8"
+          className="safe-t safe-b safe-x fixed inset-0 z-[900] flex overflow-y-auto overscroll-contain bg-ink/25 backdrop-blur-[3px] sm:p-8"
         >
           <motion.div
             role="dialog"
@@ -194,20 +196,20 @@ export default function SiteExplorer() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
-          className="flex h-full flex-col overflow-y-auto bg-cream"
+          className="flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-cream"
         >
-          <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col px-6 py-7 md:px-10">
-            <header className="flex flex-col gap-5 border-b border-hairline pb-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="safe-t safe-b safe-x mx-auto flex w-full max-w-[1600px] flex-1 flex-col md:px-10">
+            <header className="flex flex-col gap-3 border-b border-hairline pb-5 md:gap-5 md:pb-6 lg:flex-row lg:items-end lg:justify-between">
               <TitleBlock title="All sites" count={visibleSites.length} />
-              <div className="flex flex-col gap-3 lg:items-end">
-                <div className="flex flex-wrap items-center gap-2.5">
+              <div className="flex flex-col gap-2 md:gap-3 lg:items-end">
+                <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap md:w-auto md:gap-2.5">
                   {controls}
                 </div>
                 <BoroughChips value={borough} onChange={setBorough} />
               </div>
             </header>
 
-            <div className="flex flex-1 flex-col pt-7">
+            <div className="flex flex-1 flex-col pt-5 md:pt-7">
               <AllSitesView
                 sites={visibleSites}
                 office={office}
@@ -216,8 +218,8 @@ export default function SiteExplorer() {
               />
             </div>
 
-            <footer className="mt-8 flex items-center justify-between border-t border-hairline pt-4">
-              <p className="font-mono text-[11px] text-ink-faint">
+            <footer className="mt-6 flex flex-col gap-2 border-t border-hairline pt-4 md:mt-8 md:flex-row md:items-center md:justify-between">
+              <p className="hidden font-mono text-[11px] text-ink-faint md:block">
                 Right column shows the closest other site and its distance
               </p>
               <p className="font-mono text-[11px] text-ink-faint tabular-nums">
@@ -251,50 +253,58 @@ export default function SiteExplorer() {
         />
 
         {/* Floating chrome. The wrapper ignores pointer events so the map stays draggable. */}
-        <div className="pointer-events-none absolute inset-0 z-[600] p-5 md:p-6">
-          <div className="flex h-full flex-col justify-between gap-4">
-            <div className="flex items-start justify-between gap-4">
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
-                className="pointer-events-auto rounded-2xl border border-hairline bg-paper/95 px-5 py-4 shadow-float backdrop-blur-sm"
-              >
-                <TitleBlock title="Lantern Sites" count={visibleSites.length} />
-              </motion.div>
+        <div className="safe-t safe-x pointer-events-none absolute inset-0 z-[600] flex flex-col justify-between gap-3 pb-3 md:gap-4 md:pb-6">
+          {/* landscape: phones on their side only have ~375px of height, so the
+              title and the controls share a row instead of stacking. */}
+          <div className="flex flex-col gap-2.5 landscape:flex-row landscape:items-start landscape:justify-between md:flex-row md:items-start md:justify-between md:gap-4">
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.34, ease: [0.22, 0.61, 0.36, 1] }}
+              className="pointer-events-auto self-start rounded-full border border-hairline bg-paper/95 px-4 py-2.5 shadow-float backdrop-blur-sm md:rounded-2xl md:px-5 md:py-4"
+            >
+              <TitleBlock title="Lantern Sites" count={visibleSites.length} />
+            </motion.div>
 
-              <div className="pointer-events-auto flex max-h-full flex-col items-end gap-2.5 overflow-y-auto">
-                <div className="flex items-center gap-2.5">{controls}</div>
-                <BoroughChips value={borough} onChange={setBorough} />
-
-                <AnimatePresence>
-                  {showResults && (
-                    <SearchResults
-                      key="results"
-                      results={visibleSites}
-                      onSelect={selectSite}
-                    />
-                  )}
-                </AnimatePresence>
-
-                <AnimatePresence mode="wait">
-                  {selected && (
-                    <DetailPanel
-                      key={selected.id}
-                      site={selected}
-                      onClose={clearSelection}
-                      onSelect={selectSite}
-                      onExpand={openDetail}
-                    />
-                  )}
-                </AnimatePresence>
+            {/* min-w-0 + flex-1 lets the chip rail shrink to the space left beside
+                the title instead of overflowing past the right edge. */}
+            <div className="pointer-events-auto flex w-full flex-col gap-2 landscape:min-w-0 landscape:flex-1 landscape:items-end md:max-h-full md:min-w-0 md:flex-none md:items-end md:gap-2.5 md:overflow-y-auto">
+              {/* Wraps on phones so the search input gets its own full-width
+                  row below the view toggle; stays inline from md up. */}
+              <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap md:w-auto md:gap-2.5">
+                {controls}
               </div>
+              <BoroughChips value={borough} onChange={setBorough} />
+
+              <AnimatePresence>
+                {showResults && (
+                  <SearchResults
+                    key="results"
+                    results={visibleSites}
+                    onSelect={selectSite}
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* On phones DetailPanel positions itself `fixed` as a bottom
+                  sheet; from md up it sits here in the right-hand column. */}
+              <AnimatePresence mode="wait">
+                {selected && (
+                  <DetailPanel
+                    key={selected.id}
+                    site={selected}
+                    onClose={clearSelection}
+                    onSelect={selectSite}
+                    onExpand={openDetail}
+                  />
+                )}
+              </AnimatePresence>
             </div>
+          </div>
 
-            <div className="flex items-end justify-between gap-4">
-              <div className="pointer-events-auto">
-                <Legend counts={counts} office={office} />
-              </div>
+          <div className="flex items-end justify-between gap-4">
+            <div className="pointer-events-auto">
+              <Legend counts={counts} office={office} />
             </div>
           </div>
         </div>

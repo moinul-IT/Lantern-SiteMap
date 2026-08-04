@@ -64,7 +64,7 @@ export default function SiteDetailView({
           type="button"
           onClick={onClose}
           aria-label="Close site details"
-          className="absolute top-3 right-3 flex size-9 items-center justify-center rounded-full border border-hairline bg-paper/90 text-ink-soft shadow-float backdrop-blur-sm transition-colors duration-200 hover:bg-paper hover:text-ink"
+          className="absolute top-3 right-3 flex size-11 items-center justify-center rounded-full border border-hairline bg-paper/90 text-ink-soft shadow-float backdrop-blur-sm transition-colors duration-200 hover:bg-paper hover:text-ink active:bg-cream-deep md:size-9"
         >
           <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden="true">
             <path
@@ -78,7 +78,7 @@ export default function SiteDetailView({
         </button>
       </div>
 
-      <div className="px-7 pt-6 pb-7">
+      <div className="px-5 pt-5 pb-6 md:px-7 md:pt-6 md:pb-7">
         <Section index={0}>
           <span
             className="inline-flex items-center gap-2 rounded-full px-2.5 py-1"
@@ -99,7 +99,7 @@ export default function SiteDetailView({
             </span>
           </span>
 
-          <h2 className="mt-3 font-display text-[34px] leading-[1.1] font-normal tracking-[-0.015em] text-ink">
+          <h2 className="mt-3 font-display text-[27px] leading-[1.12] font-normal tracking-[-0.015em] text-ink md:text-[34px]">
             {place.name}
           </h2>
         </Section>
@@ -148,7 +148,7 @@ export default function SiteDetailView({
                 <button
                   type="button"
                   onClick={() => onOpenPlace(neighbour.id)}
-                  className="-mx-2 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors duration-200 hover:bg-cream focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40"
+                  className="-mx-2 flex min-h-11 w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40"
                 >
                   <span
                     aria-hidden="true"
@@ -174,18 +174,18 @@ export default function SiteDetailView({
           </ul>
         </Section>
 
-        <Section index={3} className="mt-7 flex flex-wrap gap-2.5">
+        <Section index={3} className="mt-6 flex flex-wrap gap-2.5 md:mt-7">
           <button
             type="button"
             onClick={() => onViewOnMap(place.id)}
-            className="flex-1 rounded-xl bg-ink px-4 py-3.5 text-[13px] font-medium text-cream transition-colors duration-200 hover:bg-[#463a2c]"
+            className="min-h-11 flex-1 rounded-xl bg-ink px-4 py-3.5 text-[13px] font-medium text-cream transition-colors duration-200 hover:bg-[#463a2c] active:bg-[#5a4a38]"
           >
             View on map
           </button>
           <button
             type="button"
             onClick={() => openDirections(place)}
-            className="rounded-xl border border-hairline bg-paper px-4 py-3.5 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink"
+            className="min-h-11 flex-1 rounded-xl border border-hairline bg-paper px-4 py-3.5 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep md:flex-none"
           >
             Get directions
           </button>
@@ -195,7 +195,7 @@ export default function SiteDetailView({
               console.log("Open site record →", place.id);
               setRecordNotice(true);
             }}
-            className="rounded-xl border border-hairline bg-paper px-4 py-3.5 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink"
+            className="min-h-11 flex-1 rounded-xl border border-hairline bg-paper px-4 py-3.5 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep md:flex-none"
           >
             Site record
           </button>

@@ -24,59 +24,64 @@ function fillColor(filter: BoroughFilter) {
 
 export default function BoroughChips({ value, onChange }: Props) {
   return (
-    <div
-      role="group"
-      aria-label="Filter by borough"
-      className="flex flex-wrap items-center gap-1.5"
-    >
-      {FILTERS.map((filter) => {
-        const active = value === filter;
-        return (
-          <button
-            key={filter}
-            type="button"
-            onClick={() => onChange(filter)}
-            aria-pressed={active}
-            className={[
-              "relative flex h-9 items-center gap-2 rounded-full border px-3.5 text-[13px] shadow-float",
-              "transition-colors duration-200",
-              active
-                ? "border-transparent text-cream"
-                : "border-hairline bg-paper text-ink-soft hover:text-ink",
-            ].join(" ")}
-          >
-            {/* The fill is one element that travels between chips. -inset-px so it
+    // Mobile: one non-wrapping rail that scrolls with momentum, so the chips can
+    // never wrap into the map or get clipped by the title card.
+    <div className="touch-rail w-full max-w-full overflow-x-auto md:w-auto md:max-w-none md:overflow-visible">
+      <div
+        role="group"
+        aria-label="Filter by borough"
+        className="flex w-max items-center gap-1.5 md:w-auto md:flex-wrap"
+      >
+        {FILTERS.map((filter) => {
+          const active = value === filter;
+          return (
+            <button
+              key={filter}
+              type="button"
+              onClick={() => onChange(filter)}
+              aria-pressed={active}
+              className={[
+                // 44px tap target on touch, back to 36px on desktop.
+                "relative flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm shadow-float md:h-9 md:px-3.5 md:text-[13px]",
+                "transition-colors duration-200",
+                active
+                  ? "border-transparent text-cream"
+                  : "border-hairline bg-paper text-ink-soft hover:text-ink",
+              ].join(" ")}
+            >
+              {/* The fill is one element that travels between chips. -inset-px so it
                 covers the border box and no hairline shows through over the map. */}
-            {active && (
-              <motion.span
-                layoutId="chip-active-fill"
+              {active && (
+                <motion.span
+                  layoutId="chip-active-fill"
+                  aria-hidden="true"
+                  className="absolute -inset-px rounded-full"
+                  initial={false}
+                  animate={{ backgroundColor: fillColor(filter) }}
+                  transition={{
+                    layout: {
+                      type: "spring",
+                      stiffness: 320,
+                      damping: 34,
+                      mass: 0.7,
+                    },
+                    backgroundColor: {
+                      duration: 0.25,
+                      ease: [0.22, 0.61, 0.36, 1],
+                    },
+                  }}
+                />
+              )}
+              <span
                 aria-hidden="true"
-                className="absolute -inset-px rounded-full"
-                initial={false}
-                animate={{ backgroundColor: fillColor(filter) }}
-                transition={{
-                  layout: {
-                    type: "spring",
-                    stiffness: 320,
-                    damping: 34,
-                    mass: 0.7,
-                  },
-                  backgroundColor: {
-                    duration: 0.25,
-                    ease: [0.22, 0.61, 0.36, 1],
-                  },
-                }}
+                className="relative z-10 size-2 shrink-0 rounded-full transition-colors duration-200"
+                style={{ background: dotColor(filter, active) }}
               />
-            )}
-            <span
-              aria-hidden="true"
-              className="relative z-10 size-2 shrink-0 rounded-full transition-colors duration-200"
-              style={{ background: dotColor(filter, active) }}
-            />
-            <span className="relative z-10">{filter}</span>
-          </button>
-        );
-      })}
+              <span className="relative z-10">{filter}</span>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
