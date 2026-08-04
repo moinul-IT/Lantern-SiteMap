@@ -1,0 +1,257 @@
+"use client";
+
+import { useEffect, useMemo } from "react";
+import {
+  MapContainer,
+  Marker,
+  TileLayer,
+  Tooltip,
+  ZoomControl,
+  useMap,
+} from "react-leaflet";
+import L from "leaflet";
+import { officeIcon, siteIcon } from "@/lib/marker";
+import type { Office, Place, Site } from "@/lib/sites";
+import type { Located } from "@/lib/geo";
+
+const CARTO_VOYAGER =
+  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+const CARTO_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+const NYC_FALLBACK: L.LatLngExpression = [40.762, -73.91];
+
+/** Insets so fitBounds keeps markers clear of the floating UI cards. */
+const FIT_PADDING_TOP_LEFT: L.PointExpression = [96, 128];
+const FIT_PADDING_BOTTOM_RIGHT: L.PointExpression = [96, 128];
+
+type Props = {
+  sites: Site[];
+  /** The admin office, or null when the current filters hide it. */
+  office: Office | null;
+  selected: Place | null;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  /** Px to shift the map centre east so the selected pin clears the detail panel. */
+  panOffsetX?: number;
+  /** Changing this re-fits the viewport to the visible set. */
+  fitToken?: number;
+};
+
+/** Eases to the selected place, keeping it clear of the detail panel. */
+function FlyToSelected({
+  site,
+  panOffsetX = 0,
+}: {
+  site: Located | null;
+  panOffsetX?: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!site) return;
+
+    // Shifting the centre east by half the panel width lands the pin in the
+    // middle of the map area still visible beside the panel.
+    const zoom = Math.max(map.getZoom(), 14);
+    const target = map
+      .project([site.lat, site.lng], zoom)
+      .add([panOffsetX / 2, 0]);
+    const center = map.unproject(target, zoom);
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      map.setView(center, zoom, { animate: false });
+      return;
+    }
+
+    map.flyTo(center, zoom, { duration: 0.85, easeLinearity: 0.3 });
+  }, [map, site, panOffsetX]);
+
+  return null;
+}
+
+/** Fits the viewport to whatever set of places is currently visible. */
+function FitToSites({
+  sites,
+  fitToken,
+}: {
+  sites: Located[];
+  fitToken?: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (sites.length === 0) return;
+
+    if (sites.length === 1) {
+      map.setView([sites[0].lat, sites[0].lng], 15, { animate: true });
+      return;
+    }
+
+    const bounds = L.latLngBounds(
+      sites.map((s) => [s.lat, s.lng] as L.LatLngTuple),
+    );
+    map.fitBounds(bounds, {
+      paddingTopLeft: FIT_PADDING_TOP_LEFT,
+      paddingBottomRight: FIT_PADDING_BOTTOM_RIGHT,
+      animate: true,
+      maxZoom: 15,
+    });
+    // fitToken is a deliberate trigger: closing a pin re-frames the whole set.
+  }, [map, sites, fitToken]);
+
+  return null;
+}
+
+/** Keeps Leaflet's internal size in sync when the container resizes. */
+function ResizeWatcher() {
+  const map = useMap();
+
+  useEffect(() => {
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  return null;
+}
+
+export default function SiteMap({
+  sites,
+  office,
+  selected,
+  selectedId,
+  onSelect,
+  panOffsetX,
+  fitToken,
+}: Props) {
+  // The office is included in the fit so it never lands off-screen on load.
+  const fitTargets = useMemo(
+    () => (office ? [...sites, office] : sites),
+    [sites, office],
+  );
+  return (
+    <MapContainer
+      center={NYC_FALLBACK}
+      zoom={11}
+      minZoom={9}
+      maxZoom={18}
+      zoomControl={false}
+      scrollWheelZoom
+      className="h-full w-full"
+    >
+      <TileLayer
+        url={CARTO_VOYAGER}
+        attribution={CARTO_ATTRIBUTION}
+        subdomains="abcd"
+        detectRetina
+      />
+      <ZoomControl position="bottomright" />
+      <FitToSites sites={fitTargets} fitToken={fitToken} />
+      <FlyToSelected site={selected} panOffsetX={panOffsetX} />
+      <ResizeWatcher />
+
+      {sites.map((site) => (
+        <SiteMarker
+          key={site.id}
+          site={site}
+          selected={site.id === selectedId}
+          onSelect={onSelect}
+        />
+      ))}
+
+      {office && (
+        <OfficeMarker
+          office={office}
+          selected={office.id === selectedId}
+          onSelect={onSelect}
+        />
+      )}
+    </MapContainer>
+  );
+}
+
+function OfficeMarker({
+  office,
+  selected,
+  onSelect,
+}: {
+  office: Office;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const icon = useMemo(() => officeIcon(office, selected), [office, selected]);
+  const eventHandlers = useMemo(
+    () => ({ click: () => onSelect(office.id) }),
+    [onSelect, office.id],
+  );
+
+  return (
+    <Marker
+      position={[office.lat, office.lng]}
+      icon={icon}
+      // Above every housing pin, so the label never gets buried.
+      zIndexOffset={selected ? 1600 : 1200}
+      riseOnHover
+      eventHandlers={eventHandlers}
+      alt={office.name}
+    >
+      <Tooltip
+        direction="right"
+        offset={[14, -22]}
+        opacity={1}
+        className="lantern-tooltip"
+      >
+        <span className="block text-[13px] font-medium text-ink">
+          {office.name}
+        </span>
+        <span className="block font-mono text-[11px] text-ink-faint">
+          {office.address} · {office.floor}
+        </span>
+      </Tooltip>
+    </Marker>
+  );
+}
+
+function SiteMarker({
+  site,
+  selected,
+  onSelect,
+}: {
+  site: Site;
+  selected: boolean;
+  onSelect: (id: string) => void;
+}) {
+  const icon = useMemo(() => siteIcon(site, selected), [site, selected]);
+  const eventHandlers = useMemo(
+    () => ({ click: () => onSelect(site.id) }),
+    [onSelect, site.id],
+  );
+
+  return (
+    <Marker
+      position={[site.lat, site.lng]}
+      icon={icon}
+      zIndexOffset={selected ? 1000 : 0}
+      riseOnHover
+      eventHandlers={eventHandlers}
+      alt={site.name}
+    >
+      <Tooltip
+        direction="right"
+        offset={[10, -14]}
+        opacity={1}
+        className="lantern-tooltip"
+      >
+        <span className="block text-[13px] font-medium text-ink">
+          {site.name}
+        </span>
+        <span className="block font-mono text-[11px] text-ink-faint">
+          {site.address}
+        </span>
+      </Tooltip>
+    </Marker>
+  );
+}

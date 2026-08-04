@@ -1,0 +1,319 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #f7f2e9;
+  --color-cream-deep: #efe7d9;
+  --color-paper: #fdfbf7;
+  --color-ink: #33291f;
+  --color-ink-soft: #6b5f52;
+  --color-ink-faint: #9a8f82;
+  --color-hairline: #e4dbcb;
+
+  --color-bronx: #c2632e;
+  --color-bronx-soft: #f4e2d5;
+  --color-manhattan: #2f7d5f;
+  --color-manhattan-soft: #dcebe1;
+  --color-brooklyn: #6b5ba8;
+  --color-brooklyn-soft: #e4e0f1;
+  --color-queens: #2e6e9e;
+  --color-queens-soft: #d8e6f0;
+
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --shadow-float:
+    0 1px 2px rgb(51 41 31 / 0.04), 0 8px 24px -6px rgb(51 41 31 / 0.14);
+  --shadow-lift:
+    0 2px 4px rgb(51 41 31 / 0.05), 0 18px 40px -10px rgb(51 41 31 / 0.2);
+  --shadow-pin:
+    0 1px 2px rgb(51 41 31 / 0.28), 0 4px 10px -2px rgb(51 41 31 / 0.3);
+
+  --ease-calm: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Editorial eyebrow label: small, tracked-out, uppercase */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Skeleton placeholder used by lazy-loaded views. */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-cream-deep);
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(253 251 247 / 0.72) 50%,
+    transparent 100%
+  );
+  animation: shimmer-sweep 1.4s var(--ease-calm) infinite;
+}
+
+@keyframes shimmer-sweep {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after {
+    animation: none;
+  }
+}
+
+/* ── Leaflet overrides ──────────────────────────────────────────────────── */
+.leaflet-container {
+  background: var(--color-cream);
+  font-family: var(--font-sans);
+  outline: none;
+}
+
+/* Mute CARTO Voyager toward the warm paper palette */
+.leaflet-tile-pane {
+  filter: saturate(0.78) sepia(0.13) brightness(1.02) contrast(0.96);
+}
+
+.leaflet-control-attribution {
+  background: rgb(253 251 247 / 0.82) !important;
+  color: var(--color-ink-faint) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 9px !important;
+  letter-spacing: 0.03em;
+  border-radius: 6px 0 0 0;
+  padding: 2px 6px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--color-ink-soft) !important;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: var(--shadow-float) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  background: var(--color-paper) !important;
+  color: var(--color-ink-soft) !important;
+  border-bottom-color: var(--color-hairline) !important;
+  width: 32px !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 17px !important;
+  font-weight: 400 !important;
+  transition:
+    background 180ms var(--ease-calm),
+    color 180ms var(--ease-calm);
+}
+
+.leaflet-control-zoom a:hover {
+  background: var(--color-cream-deep) !important;
+  color: var(--color-ink) !important;
+}
+
+/* Marker shells are positioned by Leaflet; we draw entirely inside them. */
+.lantern-marker {
+  background: none !important;
+  border: none !important;
+}
+
+/* Leaflet focuses a marker on click, which drew a hard black box around the
+   pin. Keep a ring for keyboard users only. */
+.lantern-marker:focus {
+  outline: none;
+}
+
+.lantern-marker:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* Hover label — paper card, no arrow, matching the floating-card language. */
+.lantern-tooltip.leaflet-tooltip {
+  background: var(--color-paper);
+  border: 1px solid var(--color-hairline);
+  border-radius: 10px;
+  box-shadow: var(--shadow-float);
+  padding: 7px 11px;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+
+.lantern-tooltip.leaflet-tooltip::before {
+  display: none;
+}
+
+.lantern-pin {
+  position: relative;
+  width: 24px;
+  height: 32px;
+}
+
+.lantern-pin__shape {
+  display: block;
+  width: 24px;
+  height: 32px;
+  filter: drop-shadow(0 2px 3px rgb(51 41 31 / 0.32));
+  transform-origin: 12px 31px;
+  transition:
+    transform 260ms var(--ease-calm),
+    filter 260ms var(--ease-calm);
+}
+
+.lantern-marker:hover .lantern-pin__shape {
+  transform: translateY(-3px) scale(1.1);
+  filter: drop-shadow(0 6px 9px rgb(51 41 31 / 0.3));
+}
+
+.lantern-pin[data-selected="true"] .lantern-pin__shape {
+  transform: translateY(-4px) scale(1.16);
+  filter: drop-shadow(0 8px 12px rgb(51 41 31 / 0.32));
+}
+
+/* Soft pulse ring, centred on the pin head. Selected markers only. */
+.lantern-pin__pulse {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 9999px;
+  background: var(--pin);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lantern-pin[data-selected="true"] .lantern-pin__pulse {
+  animation: lantern-pulse 2.4s var(--ease-calm) infinite;
+}
+
+@keyframes lantern-pulse {
+  0% {
+    transform: translateY(-4px) scale(0.6);
+    opacity: 0.4;
+  }
+  70% {
+    transform: translateY(-4px) scale(2.6);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(-4px) scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* ── Admin office marker ────────────────────────────────────────────────── */
+.lantern-office {
+  display: flex;
+  width: 76px;
+  height: 51px;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.lantern-office__label {
+  border-radius: 9999px;
+  border: 1px solid var(--color-hairline);
+  background: var(--color-paper);
+  box-shadow: var(--shadow-float);
+  padding: 1px 6px 2px;
+  color: var(--color-ink);
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.13em;
+  line-height: 1.4;
+  text-transform: uppercase;
+  transition: transform 260ms var(--ease-calm);
+}
+
+.lantern-office__mark {
+  position: relative;
+  display: block;
+  width: 26px;
+  height: 33px;
+}
+
+.lantern-office__shape {
+  display: block;
+  width: 26px;
+  height: 33px;
+  filter: drop-shadow(0 2px 3px rgb(51 41 31 / 0.34));
+  transform-origin: 13px 32px;
+  transition:
+    transform 260ms var(--ease-calm),
+    filter 260ms var(--ease-calm);
+}
+
+.lantern-marker--office:hover .lantern-office__shape {
+  transform: translateY(-3px) scale(1.08);
+  filter: drop-shadow(0 6px 9px rgb(51 41 31 / 0.32));
+}
+
+.lantern-marker--office:hover .lantern-office__label {
+  transform: translateY(-2px);
+}
+
+.lantern-office[data-selected="true"] .lantern-office__shape {
+  transform: translateY(-4px) scale(1.13);
+  filter: drop-shadow(0 8px 12px rgb(51 41 31 / 0.34));
+}
+
+.lantern-office__pulse {
+  position: absolute;
+  left: 13px;
+  top: 13px;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 9999px;
+  background: var(--pin);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lantern-office[data-selected="true"] .lantern-office__pulse {
+  animation: lantern-pulse 2.4s var(--ease-calm) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lantern-pin[data-selected="true"] .lantern-pin__pulse,
+  .lantern-office[data-selected="true"] .lantern-office__pulse {
+    animation: none;
+  }
+  .lantern-pin__shape,
+  .lantern-office__shape,
+  .lantern-office__label {
+    transition: none;
+  }
+}

@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Netlify's build image supplies this plugin for Next.js sites; it wires up
+# the App Router, image optimisation, and serverless handlers.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  # Next 16 requires >= 20.9
+  NODE_VERSION = "22"

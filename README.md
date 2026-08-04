@@ -1,0 +1,149 @@
+# Lantern Sites
+
+Internal map of Lantern Community Services supportive-housing sites across NYC.
+Read-only, hardcoded data, no database, no auth.
+
+## Run locally
+
+```bash
+npm install
+```
+
+```bash
+npm run dev
+```
+
+Then open http://localhost:3000.
+
+Other scripts:
+
+```bash
+npm run build
+```
+
+```bash
+npm run lint
+```
+
+## Deploy to Netlify
+
+The repo already contains `netlify.toml`, so no build settings need to be typed
+into the dashboard.
+
+**Option A — connect the Git repo (recommended, gives you deploy-on-push):**
+
+1. Push this repo to GitHub.
+2. In Netlify: **Add new site → Import an existing project**, pick the repo.
+3. Netlify reads `netlify.toml` and installs `@netlify/plugin-nextjs`
+   automatically. Leave build command and publish directory as detected.
+4. **Deploy site.**
+
+**Option B — deploy from this machine with the CLI:**
+
+```bash
+npm install -g netlify-cli
+```
+
+```bash
+netlify deploy --build
+```
+
+That publishes a draft URL. When it looks right, promote to production:
+
+```bash
+netlify deploy --build --prod
+```
+
+No environment variables are required — tiles come from CARTO's keyless
+endpoint and all site coordinates are baked into the source.
+
+## Structure
+
+```
+app/
+  layout.tsx        fonts (Fraunces + Inter), Leaflet CSS, metadata
+  page.tsx          server component, renders the explorer
+  globals.css       theme tokens, Leaflet overrides, marker/pin styles
+components/
+  SiteExplorer.tsx  owns all state; switches between map and list views
+  SiteMap.tsx       Leaflet map, CARTO Voyager tiles, fit-bounds, fly-to
+  DetailPanel.tsx   compact map-side panel with nearby sites and actions
+  SiteDetailView.tsx  in-depth view (lazy-loaded) with View on map / directions
+  SiteDetailSkeleton.tsx  shimmer placeholder while that chunk loads
+  AllSitesView.tsx  column-per-borough list view, plus the Admin column
+  SitePhoto.tsx     local photo, or branded borough-colour monogram fallback
+  SearchField.tsx   search input (⌘K to focus, Esc to clear)
+  SearchResults.tsx clickable results under the search field
+  BoroughChips.tsx  borough filters with a travelling active fill
+  ViewToggle.tsx    Map / All sites segmented control
+  Legend.tsx        bottom-left borough legend with counts
+  TitleBlock.tsx    eyebrow + title + animated live count
+lib/
+  sites.ts          the 21 sites + the admin office, frozen lat/lng, colours
+  geo.ts            haversine, nearest-neighbour, distance formatting
+  filter.ts         search + borough filtering
+  marker.ts         borough-coloured divIcon builder
+  directions.ts     Apple Maps vs Google Maps URL by platform
+```
+
+## Data notes
+
+Coordinates were geocoded once against the full street address (Nominatim) and
+pasted in as static values — nothing geocodes at runtime. Three addresses needed
+correcting during that pass:
+
+- **Lindenguild Hall** — "3859 3rd Avenue" only matched a street centroid in ZIP
+  10037 (Manhattan). Spelled "Third Avenue" it resolves house-level in 10457.
+- **Hunterfly Trace** — source ZIP 11223 is Gravesend; 403 Howard Ave is in
+  Brownsville, **11233**.
+- **Laurel Hall / Liberty Plaza** — hyphenated Queens house numbers failed
+  plain-text lookup; both resolved via structured queries.
+- **Rockaway Terrace** — source ZIP 11691 is Far Rockaway; 4317 Rockaway Beach
+  Blvd is in Arverne, **11692**.
+
+Also worth knowing: **Cedar Hall**'s source ZIP is 10456, but 745 Fox Street
+geocodes to 10455. The house number matched exactly so the pin is correct.
+
+Nearest-neighbour distances are computed against all 21 sites regardless of the
+active filter, so a site's closest neighbour can be in another borough (Leeward
+Hall → Schafer Hall, Laurel Hall → Euclid-Glenmore).
+
+## The admin office
+
+The main office (575 8th Avenue, Floor 15) is **not** part of `SITES` — it isn't
+supportive housing, so including it would corrupt the site count and borough
+tallies. It lives in `MAIN_OFFICE` and gets:
+
+- a squared ink badge marker with a standing **ADMIN** label, deliberately
+  unlike the borough-coloured teardrops;
+- its own legend row below a divider, with a squared swatch;
+- an **Admin** column in the list view;
+- an `ADMIN` tag in place of a borough in both detail views.
+
+A borough chip hides it, so each borough's pin count always equals its legend
+count. It stays visible under **All**, and is searchable by "admin", "office",
+its address, or its floor.
+
+## Adding site photos
+
+Photos are **local static files only** — this app never contacts an external
+image service (no Street View, Places, Unsplash, or CDN). To add one:
+
+1. Drop the file in `public/photos/`, e.g. `public/photos/amber-hall.jpg`.
+2. Set that site's `photo` field in `lib/sites.ts`:
+
+```ts
+photo: "/photos/amber-hall.jpg",
+```
+
+Landscape crops around 720×420 look best — the panel renders them 360px wide by
+132px tall, cover-fit. Any site left at `photo: null` shows a monogram block in
+its borough colour instead, and if a referenced file is ever missing the
+component falls back to that same block rather than a broken image.
+
+## Known stubs
+
+- **"Open site record"** logs to the console and shows an inline "not connected
+  yet" note. Point it at the real record system when there is one.
+- **All 21 `photo` fields are `null`**, so every site currently shows the
+  monogram placeholder.
