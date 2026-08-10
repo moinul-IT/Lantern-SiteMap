@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo } from "react";
 import {
   MapContainer,
   Marker,
+  Polygon,
   TileLayer,
   Tooltip,
   ZoomControl,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
-import { officeIcon, siteIcon } from "@/lib/marker";
+import {
+  clusterBadgeIcon,
+  officeIcon,
+  siteIcon,
+  type ColorMode,
+} from "@/lib/marker";
+import { clusterShapes } from "@/lib/cluster-shape";
 import type { Office, Place, Site } from "@/lib/sites";
 import type { Located } from "@/lib/geo";
 
@@ -37,6 +44,10 @@ type Props = {
   panOffsetX?: number;
   /** Changing this re-fits the viewport to the visible set. */
   fitToken?: number;
+  /** Colour pins by borough, or by cluster with cluster outlines drawn. */
+  colorMode?: ColorMode;
+  /** Pin names stay visible without hover or selection. */
+  showLabels?: boolean;
 };
 
 /** Eases to the selected place, keeping it clear of the detail panel. */
@@ -149,11 +160,18 @@ export default function SiteMap({
   onSelect,
   panOffsetX,
   fitToken,
+  colorMode = "borough",
+  showLabels = false,
 }: Props) {
   // The office is included in the fit so it never lands off-screen on load.
   const fitTargets = useMemo(
     () => (office ? [...sites, office] : sites),
     [sites, office],
+  );
+
+  const shapes = useMemo(
+    () => (colorMode === "cluster" ? clusterShapes(sites) : []),
+    [colorMode, sites],
   );
   return (
     <MapContainer
@@ -183,12 +201,44 @@ export default function SiteMap({
       <FlyToSelected site={selected} panOffsetX={panOffsetX} />
       <ResizeWatcher />
 
+      {/* Cluster areas sit under the pins so they never block a tap. */}
+      {shapes.map((shape) => (
+        <Fragment key={`shape-${shape.cluster}`}>
+          {shape.outline.length >= 3 && (
+            <Polygon
+              positions={shape.outline}
+              interactive={false}
+              pathOptions={{
+                color: shape.color.base,
+                weight: 1.5,
+                opacity: 0.55,
+                fillColor: shape.color.base,
+                fillOpacity: 0.09,
+                dashArray: "5 4",
+              }}
+            />
+          )}
+          <Marker
+            position={shape.centroid}
+            icon={clusterBadgeIcon(
+              shape.label,
+              shape.color.base,
+              shape.sites.length,
+            )}
+            interactive={false}
+            zIndexOffset={-500}
+          />
+        </Fragment>
+      ))}
+
       {sites.map((site) => (
         <SiteMarker
           key={site.id}
           site={site}
           selected={site.id === selectedId}
           onSelect={onSelect}
+          colorMode={colorMode}
+          showLabels={showLabels}
         />
       ))}
 
@@ -249,12 +299,19 @@ function SiteMarker({
   site,
   selected,
   onSelect,
+  colorMode,
+  showLabels,
 }: {
   site: Site;
   selected: boolean;
   onSelect: (id: string) => void;
+  colorMode: ColorMode;
+  showLabels: boolean;
 }) {
-  const icon = useMemo(() => siteIcon(site, selected), [site, selected]);
+  const icon = useMemo(
+    () => siteIcon(site, selected, colorMode),
+    [site, selected, colorMode],
+  );
   const eventHandlers = useMemo(
     () => ({ click: () => onSelect(site.id) }),
     [onSelect, site.id],
@@ -270,11 +327,17 @@ function SiteMarker({
       alt={site.name}
     >
       <Tooltip
+        // Leaflet only reads `permanent` when the tooltip is created, so the key
+        // forces a remount when the Labels switch flips.
+        key={showLabels ? "permanent" : "hover"}
         direction="right"
         offset={[10, -14]}
         opacity={1}
-        className="lantern-tooltip"
+        permanent={showLabels}
+        className={`lantern-tooltip${showLabels ? " lantern-tooltip--label" : ""}`}
       >
+        {/* Labels mode shows the same name + address card as hover, just pinned
+            open, so the basic details are readable without touching the pin. */}
         <span className="block text-[13px] font-medium text-ink">
           {site.name}
         </span>

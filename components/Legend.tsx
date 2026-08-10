@@ -5,16 +5,35 @@ import { motion } from "framer-motion";
 import {
   BOROUGHS,
   BOROUGH_COLORS,
+  CLUSTERS,
+  CLUSTER_COLORS,
   OFFICE_COLORS,
+  SHELTER_COLORS,
+  clusterLabel,
   type Borough,
+  type ClusterId,
   type Office,
 } from "@/lib/sites";
 
+type Row = {
+  key: string;
+  label: string;
+  color: string;
+  count: number;
+  squared: boolean;
+};
+
 export default function Legend({
   counts,
+  clusterCounts,
+  shelters,
+  clusterMode,
   office,
 }: {
   counts: Record<Borough, number>;
+  clusterCounts: Record<ClusterId, number>;
+  shelters: number;
+  clusterMode: boolean;
   office: Office | null;
 }) {
   // Collapsed by default on phones so it stops covering the map. The md:
@@ -22,11 +41,41 @@ export default function Legend({
   // also keeps first paint identical on server and client.
   const [open, setOpen] = useState(false);
 
-  const present = BOROUGHS.filter((borough) => counts[borough] > 0);
-  if (present.length === 0 && !office) return null;
+  // Cluster mode swaps the whole legend over: clusters first, then shelters,
+  // which sit outside the model entirely.
+  const rows: Row[] = clusterMode
+    ? [
+        ...CLUSTERS.filter((c) => clusterCounts[c] > 0).map((c) => ({
+          key: `cluster-${c}`,
+          label: clusterLabel(c),
+          color: CLUSTER_COLORS[c].base,
+          count: clusterCounts[c],
+          squared: true,
+        })),
+        ...(shelters > 0
+          ? [
+              {
+                key: "shelter",
+                label: "Shelter",
+                color: SHELTER_COLORS.base,
+                count: shelters,
+                squared: false,
+              },
+            ]
+          : []),
+      ]
+    : BOROUGHS.filter((borough) => counts[borough] > 0).map((borough) => ({
+        key: borough,
+        label: borough,
+        color: BOROUGH_COLORS[borough].base,
+        count: counts[borough],
+        squared: false,
+      }));
 
-  const total =
-    present.reduce((sum, b) => sum + counts[b], 0) + (office ? 1 : 0);
+  if (rows.length === 0 && !office) return null;
+
+  const total = rows.reduce((sum, r) => sum + r.count, 0) + (office ? 1 : 0);
+  const heading = clusterMode ? "Cluster" : "Borough";
 
   return (
     <motion.div
@@ -44,11 +93,11 @@ export default function Legend({
         className="flex h-11 items-center gap-2 rounded-full border border-hairline bg-paper/95 px-4 shadow-float backdrop-blur-sm md:hidden"
       >
         <span aria-hidden="true" className="flex items-center -space-x-1">
-          {present.map((borough) => (
+          {rows.map((row) => (
             <span
-              key={borough}
-              className="size-2.5 rounded-full ring-[1.5px] ring-paper"
-              style={{ background: BOROUGH_COLORS[borough].base }}
+              key={row.key}
+              className={`size-2.5 ring-[1.5px] ring-paper ${row.squared ? "rounded-[3px]" : "rounded-full"}`}
+              style={{ background: row.color }}
             />
           ))}
           {office && (
@@ -88,18 +137,18 @@ export default function Legend({
           "md:max-h-none md:overflow-visible md:border-hairline md:p-4 md:opacity-100",
         ].join(" ")}
       >
-        <p className="eyebrow">Borough</p>
+        <p className="eyebrow">{heading}</p>
         <ul className="mt-2.5 space-y-2">
-          {present.map((borough) => (
-            <li key={borough} className="flex items-center gap-2.5">
+          {rows.map((row) => (
+            <li key={row.key} className="flex items-center gap-2.5">
               <span
                 aria-hidden="true"
-                className="size-2.5 shrink-0 rounded-full"
-                style={{ background: BOROUGH_COLORS[borough].base }}
+                className={`size-2.5 shrink-0 ${row.squared ? "rounded-[3px]" : "rounded-full"}`}
+                style={{ background: row.color }}
               />
-              <span className="flex-1 text-[13px] text-ink">{borough}</span>
+              <span className="flex-1 text-[13px] text-ink">{row.label}</span>
               <span className="font-mono text-[11px] text-ink-faint tabular-nums">
-                {String(counts[borough]).padStart(2, "0")}
+                {String(row.count).padStart(2, "0")}
               </span>
             </li>
           ))}

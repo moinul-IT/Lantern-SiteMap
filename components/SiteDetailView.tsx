@@ -7,8 +7,10 @@ import { formatDistance, nearestSites } from "@/lib/geo";
 import { openDirections } from "@/lib/directions";
 import {
   BOROUGH_COLORS,
+  CLUSTER_COLORS,
   OFFICE_COLORS,
   SITES,
+  clusterLabel,
   isOffice,
   type Place,
 } from "@/lib/sites";
@@ -117,13 +119,42 @@ export default function SiteDetailView({
             </p>
           </div>
           <div>
-            <p className="eyebrow">{office ? "Function" : "Borough"}</p>
-            <p className="mt-1.5 text-sm text-ink">
-              {office
-                ? "Administrative office"
-                : `${place.borough}, New York City`}
-            </p>
-            <p className="font-mono text-[11px] text-ink-faint tabular-nums">
+            <p className="eyebrow">{office ? "Function" : "Classification"}</p>
+            {office ? (
+              <p className="mt-1.5 text-sm text-ink">Administrative office</p>
+            ) : (
+              <>
+                <p className="mt-1.5 text-sm text-ink">{place.type}</p>
+                <p className="text-sm text-ink-soft">
+                  {place.cluster ? (
+                    <span
+                      className="inline-flex items-center gap-1.5"
+                      style={{ color: CLUSTER_COLORS[place.cluster].base }}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="size-2 rounded-[2px]"
+                        style={{
+                          background: CLUSTER_COLORS[place.cluster].base,
+                        }}
+                      />
+                      {clusterLabel(place.cluster)}
+                    </span>
+                  ) : (
+                    "Not in the cluster model"
+                  )}
+                </p>
+                <p className="mt-0.5 text-sm text-ink-soft">
+                  {place.borough}, New York City
+                </p>
+                {place.programs && place.programs.length > 0 && (
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                    {place.programs.join(" · ")}
+                  </p>
+                )}
+              </>
+            )}
+            <p className="mt-1 font-mono text-[11px] text-ink-faint tabular-nums">
               {place.lat.toFixed(5)}, {place.lng.toFixed(5)}
             </p>
           </div>

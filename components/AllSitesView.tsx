@@ -5,18 +5,25 @@ import { closestSite, formatDistance } from "@/lib/geo";
 import {
   BOROUGHS,
   BOROUGH_COLORS,
+  CLUSTERS,
+  CLUSTER_COLORS,
   OFFICE_COLORS,
+  SHELTER_COLORS,
   SITES,
+  clusterLabel,
   type Office,
   type Place,
   type Site,
 } from "@/lib/sites";
+
+export type GroupBy = "borough" | "cluster";
 
 type Props = {
   sites: Site[];
   office: Office | null;
   selectedId: string | null;
   onSelect: (id: string) => void;
+  groupBy: GroupBy;
 };
 
 const EASE = [0.22, 0.61, 0.36, 1] as const;
@@ -24,34 +31,71 @@ const EASE = [0.22, 0.61, 0.36, 1] as const;
 type Column = {
   key: string;
   title: string;
-  color: { base: string; soft: string };
+  color: { base: string };
   squared: boolean;
+  note?: string;
   places: Place[];
 };
+
+function buildColumns(
+  sites: Site[],
+  office: Office | null,
+  groupBy: GroupBy,
+): Column[] {
+  const columns: Column[] =
+    groupBy === "cluster"
+      ? [
+          // Clusters first, then every shelter together — they're outside the
+          // cluster model, so they get one shared column rather than four.
+          ...CLUSTERS.map((cluster) => ({
+            key: `cluster-${cluster}`,
+            title: clusterLabel(cluster),
+            color: CLUSTER_COLORS[cluster],
+            squared: true,
+            note: "Supportive Housing",
+            places: sites.filter((s) => s.cluster === cluster) as Place[],
+          })),
+          {
+            key: "shelter",
+            title: "Shelters",
+            color: SHELTER_COLORS,
+            squared: false,
+            note: "Not in the cluster model",
+            places: sites.filter((s) => s.type === "Shelter") as Place[],
+          },
+        ]
+      : BOROUGHS.map((borough) => ({
+          key: borough,
+          title: borough,
+          color: BOROUGH_COLORS[borough],
+          squared: false,
+          places: sites.filter((s) => s.borough === borough) as Place[],
+        }));
+
+  const withRows = columns.filter((column) => column.places.length > 0);
+
+  if (office) {
+    withRows.push({
+      key: "admin",
+      title: office.label,
+      color: OFFICE_COLORS,
+      squared: true,
+      note: "Own entity",
+      places: [office],
+    });
+  }
+
+  return withRows;
+}
 
 export default function AllSitesView({
   sites,
   office,
   selectedId,
   onSelect,
+  groupBy,
 }: Props) {
-  const columns: Column[] = BOROUGHS.map((borough) => ({
-    key: borough,
-    title: borough,
-    color: BOROUGH_COLORS[borough],
-    squared: false,
-    places: sites.filter((site) => site.borough === borough) as Place[],
-  })).filter((column) => column.places.length > 0);
-
-  if (office) {
-    columns.push({
-      key: "admin",
-      title: office.label,
-      color: OFFICE_COLORS,
-      squared: true,
-      places: [office],
-    });
-  }
+  const columns = buildColumns(sites, office, groupBy);
 
   if (columns.length === 0) {
     return (
@@ -62,31 +106,34 @@ export default function AllSitesView({
   }
 
   return (
-    <div className="grid flex-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid flex-1 items-start gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
       {columns.map((column, columnIndex) => (
         <motion.section
           key={column.key}
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{
-            duration: 0.36,
-            delay: columnIndex * 0.06,
-            ease: EASE,
-          }}
+          transition={{ duration: 0.36, delay: columnIndex * 0.06, ease: EASE }}
           className="overflow-hidden rounded-2xl border border-hairline bg-paper shadow-float"
         >
-          <header className="flex items-center gap-2.5 border-b border-hairline px-5 py-4">
-            <span
-              aria-hidden="true"
-              className={`size-2.5 shrink-0 ${column.squared ? "rounded-[3px]" : "rounded-full"}`}
-              style={{ background: column.color.base }}
-            />
-            <h2 className="flex-1 font-display text-lg leading-none font-normal text-ink">
-              {column.title}
-            </h2>
-            <span className="font-mono text-[11px] text-ink-faint tabular-nums">
-              {String(column.places.length).padStart(2, "0")}
-            </span>
+          <header className="border-b border-hairline px-5 py-4">
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className={`size-2.5 shrink-0 ${column.squared ? "rounded-[3px]" : "rounded-full"}`}
+                style={{ background: column.color.base }}
+              />
+              <h2 className="flex-1 font-display text-lg leading-none font-normal text-ink">
+                {column.title}
+              </h2>
+              <span className="font-mono text-[11px] text-ink-faint tabular-nums">
+                {String(column.places.length).padStart(2, "0")}
+              </span>
+            </div>
+            {column.note && (
+              <p className="mt-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
+                {column.note}
+              </p>
+            )}
           </header>
 
           <ul>
@@ -131,6 +178,7 @@ export default function AllSitesView({
                       <span className="mt-0.5 block truncate text-[13px] text-ink-faint">
                         {place.address}
                       </span>
+                      <SiteTypeTag place={place} groupBy={groupBy} />
                     </span>
 
                     {nearest && (
@@ -151,5 +199,42 @@ export default function AllSitesView({
         </motion.section>
       ))}
     </div>
+  );
+}
+
+/**
+ * In borough grouping the type/cluster isn't otherwise visible, so it's shown
+ * inline. In cluster grouping the column header already says it.
+ */
+function SiteTypeTag({ place, groupBy }: { place: Place; groupBy: GroupBy }) {
+  if ("kind" in place) return null;
+  const site = place as Site;
+
+  const parts =
+    groupBy === "borough"
+      ? [site.type, site.cluster ? clusterLabel(site.cluster) : null].filter(
+          Boolean,
+        )
+      : [site.borough];
+
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+      {parts.map((part) => (
+        <span
+          key={String(part)}
+          className="rounded-full bg-cream-deep/70 px-1.5 py-px font-mono text-[9px] tracking-[0.1em] uppercase text-ink-soft"
+        >
+          {part}
+        </span>
+      ))}
+      {site.programs?.map((program) => (
+        <span
+          key={program}
+          className="rounded-full border border-hairline px-1.5 py-px font-mono text-[9px] tracking-[0.1em] uppercase text-ink-faint"
+        >
+          {program}
+        </span>
+      ))}
+    </span>
   );
 }

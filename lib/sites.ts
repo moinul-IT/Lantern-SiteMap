@@ -1,5 +1,13 @@
 export type Borough = "Bronx" | "Manhattan" | "Brooklyn" | "Queens";
 
+/**
+ * Shelters are deliberately outside the cluster model — they carry
+ * `cluster: null` and are grouped on their own in cluster views.
+ */
+export type SiteType = "Supportive Housing" | "Shelter";
+
+export type ClusterId = 1 | 2 | 3 | 4;
+
 export type Site = {
   id: string;
   name: string;
@@ -9,6 +17,14 @@ export type Site = {
   zip: string;
   lat: number;
   lng: number;
+  type: SiteType;
+  /** Cluster assignment; null for shelters, which aren't part of the model. */
+  cluster: ClusterId | null;
+  /**
+   * Contract/program lines operating at this building, e.g. Huntersmoon runs
+   * both DOHMH and HASA. Every program at a building shares its cluster.
+   */
+  programs?: string[];
   /**
    * Path to a LOCAL static image, e.g. "/photos/amber-hall.jpg" for a file in
    * `public/photos/`. Never a remote URL — nothing in this app calls an external
@@ -29,6 +45,28 @@ export const BOROUGH_COLORS: Record<
   Queens: { base: "#2E6E9E", soft: "#D8E6F0", ring: "#2E6E9E33" },
 };
 
+export const CLUSTERS: ClusterId[] = [1, 2, 3, 4];
+
+/**
+ * One shared colour per cluster, keyed to the blue / orange / yellow / green of
+ * the source sheet but pulled toward this app's warm palette so they stay
+ * legible on cream (raw highlighter yellow is unreadable here).
+ */
+export const CLUSTER_COLORS: Record<ClusterId, { base: string; soft: string }> =
+  {
+    1: { base: "#4A7FB5", soft: "#DEE9F4" },
+    2: { base: "#D98324", soft: "#FAE6CE" },
+    3: { base: "#B08900", soft: "#F5EBC4" },
+    4: { base: "#5B9E5B", soft: "#DEEDDE" },
+  };
+
+/** Shelters sit outside the cluster model, so they read as neutral. */
+export const SHELTER_COLORS = { base: "#8A7F70", soft: "#EAE3D8" };
+
+export function clusterLabel(cluster: ClusterId) {
+  return `Cluster ${cluster}`;
+}
+
 // Coordinates geocoded once via Nominatim against the full street address, then
 // frozen here. Nothing geocodes at runtime.
 export const SITES: Site[] = [
@@ -43,6 +81,8 @@ export const SITES: Site[] = [
     lat: 40.834354,
     lng: -73.90226,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 3,
   },
   {
     id: "cedar-hall",
@@ -54,6 +94,8 @@ export const SITES: Site[] = [
     lat: 40.81538,
     lng: -73.898759,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 3,
   },
   {
     id: "hudson-bay",
@@ -65,6 +107,8 @@ export const SITES: Site[] = [
     lat: 40.855837,
     lng: -73.838736,
     photo: null,
+    type: "Shelter",
+    cluster: null,
   },
   {
     id: "jasper-hall",
@@ -76,6 +120,9 @@ export const SITES: Site[] = [
     lat: 40.823902,
     lng: -73.91434,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 3,
+    programs: ["Families", "Young Adults"],
   },
   {
     id: "leeward-hall",
@@ -87,6 +134,8 @@ export const SITES: Site[] = [
     lat: 40.806792,
     lng: -73.920645,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 3,
   },
   {
     id: "lindenguild-hall",
@@ -98,6 +147,8 @@ export const SITES: Site[] = [
     lat: 40.838556,
     lng: -73.90104,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 4,
   },
   {
     id: "silverleaf-hall",
@@ -109,6 +160,8 @@ export const SITES: Site[] = [
     lat: 40.845825,
     lng: -73.89855,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 4,
   },
   {
     id: "vicinitas-hall",
@@ -120,6 +173,8 @@ export const SITES: Site[] = [
     lat: 40.845535,
     lng: -73.897023,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 4,
   },
 
   // ── Manhattan (7) ────────────────────────────────────────────────────────
@@ -133,6 +188,8 @@ export const SITES: Site[] = [
     lat: 40.835911,
     lng: -73.938576,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 4,
   },
   {
     id: "huntersmoon-hall",
@@ -144,6 +201,9 @@ export const SITES: Site[] = [
     lat: 40.796168,
     lng: -73.970222,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 1,
+    programs: ["DOHMH", "HASA"],
   },
   {
     id: "prospero-hall",
@@ -155,6 +215,8 @@ export const SITES: Site[] = [
     lat: 40.800481,
     lng: -73.942196,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 1,
   },
   {
     id: "rustin-house",
@@ -166,6 +228,9 @@ export const SITES: Site[] = [
     lat: 40.794646,
     lng: -73.975245,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 1,
+    programs: ["NY/NY", "HSN"],
   },
   {
     id: "savanna-hall",
@@ -177,6 +242,8 @@ export const SITES: Site[] = [
     lat: 40.835994,
     lng: -73.938865,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 4,
   },
   {
     id: "schafer-hall",
@@ -188,6 +255,9 @@ export const SITES: Site[] = [
     lat: 40.800371,
     lng: -73.941424,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 1,
+    programs: ["HUD", "NYSSHP"],
   },
   {
     id: "stardom-hall",
@@ -199,6 +269,8 @@ export const SITES: Site[] = [
     lat: 40.763308,
     lng: -73.987117,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 2,
   },
 
   // ── Brooklyn (3) ─────────────────────────────────────────────────────────
@@ -212,6 +284,8 @@ export const SITES: Site[] = [
     lat: 40.692032,
     lng: -73.9413,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 2,
   },
   {
     id: "euclid-glenmore",
@@ -223,6 +297,8 @@ export const SITES: Site[] = [
     lat: 40.676307,
     lng: -73.87192,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 2,
   },
   {
     // Source ZIP was 11223 (Gravesend); 403 Howard Ave is in Brownsville, 11233.
@@ -235,6 +311,8 @@ export const SITES: Site[] = [
     lat: 40.674092,
     lng: -73.91938,
     photo: null,
+    type: "Supportive Housing",
+    cluster: 2,
   },
 
   // ── Queens (3) ───────────────────────────────────────────────────────────
@@ -248,6 +326,8 @@ export const SITES: Site[] = [
     lat: 40.682282,
     lng: -73.853969,
     photo: null,
+    type: "Shelter",
+    cluster: null,
   },
   {
     id: "liberty-plaza",
@@ -259,6 +339,8 @@ export const SITES: Site[] = [
     lat: 40.692793,
     lng: -73.808036,
     photo: null,
+    type: "Shelter",
+    cluster: null,
   },
   {
     // Source ZIP was 11691 (Far Rockaway); 4317 Rockaway Beach Blvd is in
@@ -272,6 +354,8 @@ export const SITES: Site[] = [
     lat: 40.593412,
     lng: -73.775143,
     photo: null,
+    type: "Shelter",
+    cluster: null,
   },
 ];
 
@@ -335,6 +419,21 @@ export function countByBorough(sites: Site[]): Record<Borough, number> {
   const counts = { Bronx: 0, Manhattan: 0, Brooklyn: 0, Queens: 0 };
   for (const s of sites) counts[s.borough] += 1;
   return counts;
+}
+
+export function countByCluster(sites: Site[]): Record<ClusterId, number> {
+  const counts = { 1: 0, 2: 0, 3: 0, 4: 0 } as Record<ClusterId, number>;
+  for (const s of sites) if (s.cluster) counts[s.cluster] += 1;
+  return counts;
+}
+
+export function shelterCount(sites: Site[]) {
+  return sites.filter((s) => s.type === "Shelter").length;
+}
+
+/** Colour a site takes in cluster mode: its cluster's, or neutral if a shelter. */
+export function clusterColorFor(site: Site) {
+  return site.cluster ? CLUSTER_COLORS[site.cluster] : SHELTER_COLORS;
 }
 
 /** Monogram shown when a place has no local photo yet. */

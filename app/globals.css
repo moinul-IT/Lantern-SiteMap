@@ -257,6 +257,49 @@ body {
   display: none;
 }
 
+/* Always-on labels carry the same name + address as the hover card. Slightly
+   tighter and less shadowed so 21 open at once stay readable over the map. */
+.lantern-tooltip--label.leaflet-tooltip {
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgb(253 251 247 / 0.92);
+  box-shadow: 0 1px 3px rgb(51 41 31 / 0.16);
+}
+
+/* Cluster name chip pinned at a cluster's centroid. */
+.lantern-marker--badge {
+  pointer-events: none;
+}
+
+.lantern-cluster-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  border-radius: 9999px;
+  border: 1px solid var(--cluster);
+  background: rgb(253 251 247 / 0.92);
+  box-shadow: 0 2px 6px rgb(51 41 31 / 0.16);
+  padding: 3px 9px;
+  color: var(--cluster);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lantern-cluster-badge__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--cluster);
+}
+
+.lantern-cluster-badge__count {
+  color: var(--color-ink-faint);
+  letter-spacing: 0.04em;
+}
+
 .lantern-pin {
   position: relative;
   width: 24px;

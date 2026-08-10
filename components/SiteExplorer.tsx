@@ -3,17 +3,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import AllSitesView from "./AllSitesView";
+import AllSitesView, { type GroupBy } from "./AllSitesView";
 import BoroughChips from "./BoroughChips";
 import DetailPanel from "./DetailPanel";
+import GroupByToggle from "./GroupByToggle";
 import Legend from "./Legend";
+import MapModeToggles from "./MapModeToggles";
 import SearchField from "./SearchField";
 import SearchResults from "./SearchResults";
 import SiteDetailSkeleton from "./SiteDetailSkeleton";
 import TitleBlock from "./TitleBlock";
 import ViewToggle, { type View } from "./ViewToggle";
 import { filterSites, matchesQuery, type BoroughFilter } from "@/lib/filter";
-import { MAIN_OFFICE, PLACES_BY_ID, SITES, countByBorough } from "@/lib/sites";
+import {
+  MAIN_OFFICE,
+  PLACES_BY_ID,
+  SITES,
+  countByBorough,
+  countByCluster,
+  shelterCount,
+} from "@/lib/sites";
 
 // Leaflet touches `window` at import time, so this must never render on the server.
 const SiteMap = dynamic(() => import("./SiteMap"), {
@@ -42,6 +51,9 @@ export default function SiteExplorer() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [wideViewport, setWideViewport] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
+  const [clusterMode, setClusterMode] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupBy>("borough");
   // Bumped to ask the map to re-fit the current set (e.g. after closing a pin).
   const [fitToken, setFitToken] = useState(0);
 
@@ -58,6 +70,11 @@ export default function SiteExplorer() {
     [query, borough],
   );
   const counts = useMemo(() => countByBorough(visibleSites), [visibleSites]);
+  const clusterCounts = useMemo(
+    () => countByCluster(visibleSites),
+    [visibleSites],
+  );
+  const shelters = useMemo(() => shelterCount(visibleSites), [visibleSites]);
   const boroughsShown = Object.values(counts).filter((n) => n > 0).length;
 
   // The office isn't a borough site, so a borough chip hides it — that keeps
@@ -103,6 +120,12 @@ export default function SiteExplorer() {
     },
     [borough, query],
   );
+
+  /** Cluster mode and cluster grouping stay in step across both views. */
+  const applyClusterMode = useCallback((on: boolean) => {
+    setClusterMode(on);
+    setGroupBy(on ? "cluster" : "borough");
+  }, []);
 
   /** List rows open the in-depth view rather than jumping to the map. */
   const openDetail = useCallback((id: string) => setDetailId(id), []);
@@ -206,6 +229,7 @@ export default function SiteExplorer() {
                   {controls}
                 </div>
                 <BoroughChips value={borough} onChange={setBorough} />
+                <GroupByToggle value={groupBy} onChange={setGroupBy} />
               </div>
             </header>
 
@@ -215,6 +239,7 @@ export default function SiteExplorer() {
                 office={office}
                 selectedId={detailId ?? selected?.id ?? null}
                 onSelect={openDetail}
+                groupBy={groupBy}
               />
             </div>
 
@@ -250,6 +275,8 @@ export default function SiteExplorer() {
           onSelect={selectSite}
           panOffsetX={selected && wideViewport ? PANEL_WIDTH + 24 : 0}
           fitToken={fitToken}
+          colorMode={clusterMode ? "cluster" : "borough"}
+          showLabels={showLabels}
         />
 
         {/* Floating chrome. The wrapper ignores pointer events so the map stays draggable. */}
@@ -275,6 +302,12 @@ export default function SiteExplorer() {
                 {controls}
               </div>
               <BoroughChips value={borough} onChange={setBorough} />
+              <MapModeToggles
+                showLabels={showLabels}
+                onShowLabelsChange={setShowLabels}
+                clusterMode={clusterMode}
+                onClusterModeChange={applyClusterMode}
+              />
 
               <AnimatePresence>
                 {showResults && (
@@ -304,7 +337,13 @@ export default function SiteExplorer() {
 
           <div className="flex items-end justify-between gap-4">
             <div className="pointer-events-auto">
-              <Legend counts={counts} office={office} />
+              <Legend
+                counts={counts}
+                clusterCounts={clusterCounts}
+                shelters={shelters}
+                clusterMode={clusterMode}
+                office={office}
+              />
             </div>
           </div>
         </div>

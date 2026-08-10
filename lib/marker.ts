@@ -1,5 +1,11 @@
 import L from "leaflet";
-import { BOROUGH_COLORS, OFFICE_COLORS, type Office, type Site } from "./sites";
+import {
+  BOROUGH_COLORS,
+  OFFICE_COLORS,
+  clusterColorFor,
+  type Office,
+  type Site,
+} from "./sites";
 
 // Teardrop drawn in a 24×32 box: circular head centred at (12,12), tip at (12,32).
 const TEARDROP =
@@ -7,15 +13,33 @@ const TEARDROP =
   "1.9 2.8 4.6 5.7 7.2 10.1 0.4 0.7 1.4 0.7 1.8 0 " +
   "2.6-4.4 5.3-7.3 7.2-10.1 1.5-2.2 2.6-4.6 2.6-7.2C22.8 6 17.9 1.2 12 1.2z";
 
-export function siteIcon(site: Site, selected: boolean) {
-  const color = BOROUGH_COLORS[site.borough].base;
+export type ColorMode = "borough" | "cluster";
+
+export function siteIcon(
+  site: Site,
+  selected: boolean,
+  colorMode: ColorMode = "borough",
+) {
+  const cluster = colorMode === "cluster";
+  const color = cluster
+    ? clusterColorFor(site).base
+    : BOROUGH_COLORS[site.borough].base;
+
+  // In cluster mode a shelter is outside the model, so it reads as a hollow pin
+  // rather than a filled one — visibly "not part of a cluster".
+  const hollow = cluster && site.cluster === null;
+
+  const body = hollow
+    ? `<path d="${TEARDROP}" fill="#fdfbf7" stroke="${color}" stroke-width="2" />
+       <circle cx="12" cy="12" r="3.4" fill="${color}" />`
+    : `<path d="${TEARDROP}" fill="${color}" />
+       <circle cx="12" cy="12" r="4.1" fill="#fdfbf7" />`;
 
   const html = `
     <div class="lantern-pin" data-selected="${selected}">
       <span class="lantern-pin__pulse" style="--pin:${color}"></span>
       <svg class="lantern-pin__shape" viewBox="0 0 24 32" aria-hidden="true">
-        <path d="${TEARDROP}" fill="${color}" />
-        <circle cx="12" cy="12" r="4.1" fill="#fdfbf7" />
+        ${body}
       </svg>
     </div>`;
 
@@ -25,6 +49,23 @@ export function siteIcon(site: Site, selected: boolean) {
     iconSize: [24, 32],
     iconAnchor: [12, 32],
     popupAnchor: [0, -30],
+  });
+}
+
+/** Chip sitting at a cluster's centroid, naming the cluster on the map. */
+export function clusterBadgeIcon(label: string, color: string, count: number) {
+  const html = `
+    <span class="lantern-cluster-badge" style="--cluster:${color}">
+      <span class="lantern-cluster-badge__dot"></span>
+      ${label}
+      <span class="lantern-cluster-badge__count">${String(count).padStart(2, "0")}</span>
+    </span>`;
+
+  return L.divIcon({
+    html,
+    className: "lantern-marker lantern-marker--badge",
+    iconSize: [128, 26],
+    iconAnchor: [64, 13],
   });
 }
 
