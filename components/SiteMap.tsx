@@ -208,6 +208,9 @@ export default function SiteMap({
             <Polygon
               positions={shape.outline}
               interactive={false}
+              // Leaflet's default simplification flattens the corner arcs into
+              // sharp cuts at low zoom; 0 keeps the rounding.
+              smoothFactor={0}
               pathOptions={{
                 color: shape.color.base,
                 weight: 1.5,
@@ -219,7 +222,7 @@ export default function SiteMap({
             />
           )}
           <Marker
-            position={shape.centroid}
+            position={shape.labelAt}
             icon={clusterBadgeIcon(
               shape.label,
               shape.color.base,
