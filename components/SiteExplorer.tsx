@@ -274,6 +274,7 @@ export default function SiteExplorer() {
           selectedId={selected?.id ?? null}
           onSelect={selectSite}
           panOffsetX={selected && wideViewport ? PANEL_WIDTH + 24 : 0}
+          liftAboveSheet={Boolean(selected) && !wideViewport}
           fitToken={fitToken}
           colorMode={clusterMode ? "cluster" : "borough"}
           showLabels={showLabels}

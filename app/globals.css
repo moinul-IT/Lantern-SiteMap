@@ -266,6 +266,11 @@ body {
   box-shadow: 0 1px 3px rgb(51 41 31 / 0.16);
 }
 
+/* Label had no placement free of its neighbours; it returns on zoom-in. */
+.lantern-tooltip--label.is-crowded-out {
+  display: none;
+}
+
 /* Cluster name chip pinned at a cluster's centroid. */
 .lantern-marker--badge {
   pointer-events: none;

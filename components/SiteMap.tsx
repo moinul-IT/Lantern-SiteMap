@@ -42,6 +42,8 @@ type Props = {
   onSelect: (id: string) => void;
   /** Px to shift the map centre east so the selected pin clears the detail panel. */
   panOffsetX?: number;
+  /** Lift the selected pin above the mobile bottom sheet instead of behind it. */
+  liftAboveSheet?: boolean;
   /** Changing this re-fits the viewport to the visible set. */
   fitToken?: number;
   /** Colour pins by borough, or by cluster with cluster outlines drawn. */
@@ -54,9 +56,11 @@ type Props = {
 function FlyToSelected({
   site,
   panOffsetX = 0,
+  liftAboveSheet = false,
 }: {
   site: Located | null;
   panOffsetX?: number;
+  liftAboveSheet?: boolean;
 }) {
   const map = useMap();
 
@@ -64,11 +68,14 @@ function FlyToSelected({
     if (!site) return;
 
     // Shifting the centre east by half the panel width lands the pin in the
-    // middle of the map area still visible beside the panel.
+    // middle of the map area still visible beside the panel. On phones the
+    // sheet covers the bottom instead, so the centre moves south to lift the
+    // pin into the band that stays visible.
     const zoom = Math.max(map.getZoom(), 14);
+    const lift = liftAboveSheet ? map.getSize().y * 0.26 : 0;
     const target = map
       .project([site.lat, site.lng], zoom)
-      .add([panOffsetX / 2, 0]);
+      .add([panOffsetX / 2, lift]);
     const center = map.unproject(target, zoom);
 
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
@@ -77,7 +84,7 @@ function FlyToSelected({
     }
 
     map.flyTo(center, zoom, { duration: 0.85, easeLinearity: 0.3 });
-  }, [map, site, panOffsetX]);
+  }, [map, site, panOffsetX, liftAboveSheet]);
 
   return null;
 }
@@ -111,6 +118,136 @@ function FitToSites({
     });
     // fitToken is a deliberate trigger: closing a pin re-frames the whole set.
   }, [map, sites, fitToken]);
+
+  return null;
+}
+
+type PermanentTooltip = L.Tooltip & {
+  _container?: HTMLElement;
+  options: L.TooltipOptions;
+};
+
+/** Placement order tried before a label is given up on. */
+const LABEL_DIRECTIONS: L.Direction[] = ["right", "left", "top", "bottom"];
+/** Px of breathing room required between two label boxes. */
+const LABEL_PADDING = 3;
+
+function overlaps(a: DOMRect, b: DOMRect) {
+  return !(
+    a.right + LABEL_PADDING < b.left ||
+    b.right + LABEL_PADDING < a.left ||
+    a.bottom + LABEL_PADDING < b.top ||
+    b.bottom + LABEL_PADDING < a.top
+  );
+}
+
+/**
+ * With 21 always-on labels many collide — Audubon and Savanna are ~100 ft apart.
+ * Each label is tried right, left, above then below its pin, and only hidden if
+ * every placement still clashes with a label already kept. Re-runs on zoom and
+ * pan, so zooming in reveals the ones that were suppressed.
+ */
+function LabelDeclutter({
+  active,
+  priorityName,
+}: {
+  active: boolean;
+  /** Display name of the selected place — its label is never suppressed. */
+  priorityName: string | null;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!active) return;
+
+    const collect = () => {
+      const entries: { tip: PermanentTooltip; el: HTMLElement; lat: number }[] =
+        [];
+
+      map.eachLayer((layer) => {
+        const marker = layer as L.Marker;
+        if (typeof marker.getTooltip !== "function") return;
+        const tip = marker.getTooltip() as PermanentTooltip | undefined;
+        if (!tip?.options.permanent || !tip._container) return;
+        entries.push({
+          tip,
+          el: tip._container,
+          lat: marker.getLatLng?.().lat ?? 0,
+        });
+      });
+
+      // Selected label always wins, then north to south for a stable order.
+      // Matches on the rendered name, not the slug id, which never matched.
+      const isPriority = (el: HTMLElement) =>
+        priorityName !== null &&
+        el.firstElementChild?.textContent?.trim() === priorityName;
+
+      entries.sort((a, b) => {
+        const diff = Number(isPriority(b.el)) - Number(isPriority(a.el));
+        return diff !== 0 ? diff : b.lat - a.lat;
+      });
+
+      return entries;
+    };
+
+    const run = () => {
+      const kept: DOMRect[] = [];
+
+      for (const { tip, el } of collect()) {
+        el.classList.remove("is-crowded-out");
+        let placed = false;
+
+        for (const direction of LABEL_DIRECTIONS) {
+          tip.options.direction = direction;
+          tip.update();
+          const rect = el.getBoundingClientRect();
+          if (rect.width === 0) continue;
+          if (!kept.some((other) => overlaps(other, rect))) {
+            kept.push(rect);
+            placed = true;
+            break;
+          }
+        }
+
+        if (!placed) {
+          // Reset to the default side so it reappears there once there's room.
+          tip.options.direction = "right";
+          tip.update();
+          el.classList.add("is-crowded-out");
+        }
+      }
+    };
+
+    // This component's effect runs before the markers' (sibling effects fire in
+    // tree order), so the tooltips don't exist yet on the first pass. The
+    // observer on the tooltip pane is what actually triggers the first run, and
+    // it also covers labels appearing later via filters.
+    let queued: number | undefined;
+    const schedule = () => {
+      window.clearTimeout(queued);
+      queued = window.setTimeout(run, 0);
+    };
+
+    const pane = map.getPane("tooltipPane");
+    const observer = pane ? new MutationObserver(schedule) : null;
+    observer?.observe(pane!, { childList: true });
+
+    schedule();
+    map.on("zoomend moveend resize", run);
+
+    return () => {
+      window.clearTimeout(queued);
+      observer?.disconnect();
+      map.off("zoomend moveend resize", run);
+      // Leave nothing hidden behind when labels are switched off.
+      map.eachLayer((layer) => {
+        const marker = layer as L.Marker;
+        if (typeof marker.getTooltip !== "function") return;
+        const tip = marker.getTooltip() as PermanentTooltip | undefined;
+        tip?._container?.classList.remove("is-crowded-out");
+      });
+    };
+  }, [map, active, priorityName]);
 
   return null;
 }
@@ -159,6 +296,7 @@ export default function SiteMap({
   selectedId,
   onSelect,
   panOffsetX,
+  liftAboveSheet,
   fitToken,
   colorMode = "borough",
   showLabels = false,
@@ -198,8 +336,16 @@ export default function SiteMap({
       />
       <ZoomControl position="bottomright" />
       <FitToSites sites={fitTargets} fitToken={fitToken} />
-      <FlyToSelected site={selected} panOffsetX={panOffsetX} />
+      <FlyToSelected
+        site={selected}
+        panOffsetX={panOffsetX}
+        liftAboveSheet={liftAboveSheet}
+      />
       <ResizeWatcher />
+      <LabelDeclutter
+        active={showLabels}
+        priorityName={selected?.name ?? null}
+      />
 
       {/* Cluster areas sit under the pins so they never block a tap. */}
       {shapes.map((shape) => (

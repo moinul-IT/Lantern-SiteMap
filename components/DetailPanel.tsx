@@ -110,8 +110,10 @@ export default function DetailPanel({
       {...(isPhone ? sheetMotion : panelMotion)}
       className={[
         "border border-hairline bg-paper shadow-lift",
-        // Phone: bottom sheet pinned to the viewport, rounded top only.
-        "fixed inset-x-0 bottom-0 z-[800] flex max-h-[85svh] flex-col rounded-t-2xl border-x-0 border-b-0 landscape:max-h-[78svh]",
+        // Phone: bottom sheet pinned to the viewport, rounded top only. Kept to
+        // roughly half the screen so the map above it stays visible and
+        // pannable while a site is selected — only "Full details" takes over.
+        "fixed inset-x-0 bottom-0 z-[800] flex max-h-[54svh] flex-col rounded-t-2xl border-x-0 border-b-0 landscape:max-h-[76svh]",
         // Desktop: back to the floating right-hand panel.
         "md:static md:z-auto md:max-h-none md:w-[360px] md:rounded-2xl md:border",
         "overflow-hidden",
