@@ -2,11 +2,12 @@
 
 import { useCoverage } from "./CoverageProvider";
 import { coverageClusterName, type Person } from "@/lib/coverage";
+import type { StaffEntry } from "@/lib/oversight";
 
 /**
- * Procurement Team Member (inherited from the site's procurement cluster) and
- * Grant Analyst (per site). `compact` is the map-side panel; the fuller form is
- * used in the in-depth view.
+ * Everything assigned to a site: the VP over it, its program staff, and its
+ * procurement coverage. `compact` is the map-side panel — it shows the VP and
+ * the site's lead roles only; the in-depth view shows the whole roster.
  */
 export default function CoverageCard({
   siteId,
@@ -16,86 +17,175 @@ export default function CoverageCard({
   compact?: boolean;
 }) {
   const { coverageForSite } = useCoverage();
-  const { cluster, procurement, grantAnalyst } = coverageForSite(siteId);
+  const { cluster, procurement, grantAnalyst, vp, team, contract } =
+    coverageForSite(siteId);
 
-  // The admin office and anything outside the org chart has no coverage.
-  if (cluster === null) return null;
+  // The admin office sits outside both charts.
+  if (!team && cluster === null) return null;
+
+  const staff = team?.staff ?? [];
+  const leadRoles = staff.filter((s) => s.role === "PD" || s.role === "SPD");
+  const shown = compact ? leadRoles : staff;
 
   return (
-    <div className="mt-4 border-t border-hairline pt-4 md:mt-5">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="eyebrow">Procurement coverage</p>
-        <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
-          {coverageClusterName(cluster)}
-        </p>
+    <>
+      <div className="mt-4 border-t border-hairline pt-4 md:mt-5">
+        <div className="flex items-baseline justify-between gap-2">
+          <p className="eyebrow">Oversight</p>
+          {contract && (
+            <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
+              {contract}
+            </p>
+          )}
+        </div>
+
+        <div
+          className={
+            compact ? "mt-2.5 space-y-2.5" : "mt-3 grid gap-3 sm:grid-cols-2"
+          }
+        >
+          <Field label="Vice President">
+            {vp ? (
+              <>
+                <Name>{vp.name}</Name>
+                <Sub>
+                  {vp.department ? `${vp.title} · ${vp.department}` : vp.title}
+                </Sub>
+              </>
+            ) : (
+              <Unassigned />
+            )}
+          </Field>
+
+          {team?.groupLabel && (
+            <Field label="Program">
+              <Name>{team.groupLabel}</Name>
+              <Sub>Roster shared across both buildings</Sub>
+            </Field>
+          )}
+
+          {team?.alsoKnownAs && (
+            <Field label="Also known as">
+              <Name>{team.alsoKnownAs}</Name>
+              <Sub>Name used on the org chart</Sub>
+            </Field>
+          )}
+        </div>
+
+        {shown.length > 0 && (
+          <ul
+            className={
+              compact
+                ? "mt-2.5 space-y-1"
+                : "mt-3 grid gap-x-4 gap-y-1 sm:grid-cols-2"
+            }
+          >
+            {shown.map((entry, index) => (
+              <StaffRow key={`${entry.role}-${index}`} entry={entry} />
+            ))}
+          </ul>
+        )}
       </div>
 
-      <div
-        className={
-          compact ? "mt-2.5 space-y-2.5" : "mt-3 grid gap-3 sm:grid-cols-2"
-        }
-      >
-        <PersonRow label="Procurement" person={procurement} />
-        <PlainRow label="Grant Analyst" value={grantAnalyst} />
-      </div>
-    </div>
+      {cluster !== null && (
+        <div className="mt-4 border-t border-hairline pt-4 md:mt-5">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="eyebrow">Procurement coverage</p>
+            <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
+              {coverageClusterName(cluster)}
+            </p>
+          </div>
+
+          <div
+            className={
+              compact ? "mt-2.5 space-y-2.5" : "mt-3 grid gap-3 sm:grid-cols-2"
+            }
+          >
+            <Field label="Procurement">
+              {procurement ? (
+                <>
+                  <Name>{procurement.name}</Name>
+                  <Sub>{procurement.title}</Sub>
+                  <Contact person={procurement} />
+                </>
+              ) : (
+                <Unassigned />
+              )}
+            </Field>
+            <Field label="Grant Analyst">
+              {grantAnalyst ? <Name>{grantAnalyst}</Name> : <Unassigned />}
+            </Field>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
-function PersonRow({
+function StaffRow({ entry }: { entry: StaffEntry }) {
+  const vacant = entry.name === "Vacant";
+  return (
+    <li className="flex items-baseline gap-2">
+      <span className="w-10 shrink-0 font-mono text-[10px] tracking-[0.08em] uppercase text-ink-faint">
+        {entry.role}
+      </span>
+      <span
+        className={`min-w-0 flex-1 truncate text-[13px] ${vacant ? "text-ink-faint italic" : "text-ink"}`}
+      >
+        {entry.name}
+        {entry.note && <span className="text-ink-faint"> ({entry.note})</span>}
+      </span>
+    </li>
+  );
+}
+
+function Field({
   label,
-  person,
+  children,
 }: {
   label: string;
-  person: Person | null;
+  children: React.ReactNode;
 }) {
   return (
     <div className="min-w-0">
       <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
         {label}
       </p>
-      {person ? (
-        <>
-          <p className="mt-0.5 truncate text-sm font-medium text-ink">
-            {person.name}
-          </p>
-          <p className="truncate text-[13px] text-ink-soft">{person.title}</p>
-          {person.email && (
-            <a
-              href={`mailto:${person.email}`}
-              className="mt-0.5 block truncate font-mono text-[11px] text-ink-soft underline decoration-hairline underline-offset-2 hover:text-ink"
-            >
-              {person.email}
-            </a>
-          )}
-          {person.phone && (
-            <a
-              href={`tel:${person.phone}`}
-              className="block truncate font-mono text-[11px] text-ink-soft hover:text-ink"
-            >
-              {person.phone}
-            </a>
-          )}
-        </>
-      ) : (
-        <Unassigned />
-      )}
+      {children}
     </div>
   );
 }
 
-function PlainRow({ label, value }: { label: string; value: string | null }) {
+function Name({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-w-0">
-      <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
-        {label}
-      </p>
-      {value ? (
-        <p className="mt-0.5 truncate text-sm font-medium text-ink">{value}</p>
-      ) : (
-        <Unassigned />
+    <p className="mt-0.5 truncate text-sm font-medium text-ink">{children}</p>
+  );
+}
+
+function Sub({ children }: { children: React.ReactNode }) {
+  return <p className="truncate text-[13px] text-ink-soft">{children}</p>;
+}
+
+function Contact({ person }: { person: Person }) {
+  return (
+    <>
+      {person.email && (
+        <a
+          href={`mailto:${person.email}`}
+          className="mt-0.5 block truncate font-mono text-[11px] text-ink-soft underline decoration-hairline underline-offset-2 hover:text-ink"
+        >
+          {person.email}
+        </a>
       )}
-    </div>
+      {person.phone && (
+        <a
+          href={`tel:${person.phone}`}
+          className="block truncate font-mono text-[11px] text-ink-soft hover:text-ink"
+        >
+          {person.phone}
+        </a>
+      )}
+    </>
   );
 }
 

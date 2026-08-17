@@ -195,3 +195,31 @@ not represented anywhere in the app.
 > all 21 sites (shelters included) into three clusters of seven; the map clusters
 > group only the 17 supportive-housing sites into four. 18 of 21 sites land
 > differently, so they are modelled as separate dimensions.
+
+## Building oversight (VP + program staff)
+
+From the "Vice President / Building Oversight" chart. Each site shows the VP over
+it and its program staff roster; `lib/oversight.ts` holds the transcription.
+
+VP is assigned **per site**, not per cluster — the chart groups sites under a VP
+directly, and those groupings match neither the map clusters nor the procurement
+clusters. All 21 sites are covered:
+
+| VP | Sites |
+| --- | --- |
+| Taiesha Zachary — Shelter Services | 4 (exactly the four shelters) |
+| Talisha Van Brackle — Operations | 0 |
+| Jonathan Castro | 5 |
+| Andrea Dogostiano | 7 |
+| Portia Linton-Blake | 5 |
+
+Three rosters are shared across two buildings each (Cedar/Schafer,
+Lindenguild/Silverleaf, Amber/Leeward). Those sites show a "Program" field naming
+the pair, and the chart's per-building notes are kept on the individual roles.
+Hudson Bay appears on the chart as "Stillwell Avenue", shown as "Also known as".
+
+Vacancies are rendered in italic grey rather than hidden — 12 of the roles on the
+chart are vacant.
+
+The **Coverage** view manages both dimensions: VP portfolios (reassign one site,
+or hand a whole portfolio to another VP) and procurement clusters.
