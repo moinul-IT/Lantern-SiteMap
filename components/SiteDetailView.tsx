@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import CoverageCard from "./CoverageCard";
 import SitePhoto from "./SitePhoto";
 import { formatDistance, nearestSites } from "@/lib/geo";
 import { openDirections } from "@/lib/directions";
@@ -160,7 +161,11 @@ export default function SiteDetailView({
           </div>
         </Section>
 
-        <Section index={2} className="mt-6 border-t border-hairline pt-5">
+        <Section index={2}>
+          <CoverageCard siteId={place.id} />
+        </Section>
+
+        <Section index={3} className="mt-6 border-t border-hairline pt-5">
           <p className="eyebrow">
             {office ? "Closest sites to this office" : "Nearby sites"}
           </p>
@@ -205,7 +210,7 @@ export default function SiteDetailView({
           </ul>
         </Section>
 
-        <Section index={3} className="mt-6 flex flex-wrap gap-2.5 md:mt-7">
+        <Section index={4} className="mt-6 flex flex-wrap gap-2.5 md:mt-7">
           <button
             type="button"
             onClick={() => onViewOnMap(place.id)}

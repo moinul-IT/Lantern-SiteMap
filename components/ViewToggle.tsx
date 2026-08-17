@@ -2,11 +2,12 @@
 
 import { motion } from "framer-motion";
 
-export type View = "map" | "list";
+export type View = "map" | "list" | "coverage";
 
 const OPTIONS: { id: View; label: string }[] = [
   { id: "map", label: "Map" },
   { id: "list", label: "All sites" },
+  { id: "coverage", label: "Coverage" },
 ];
 
 export default function ViewToggle({

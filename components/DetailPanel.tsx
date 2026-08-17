@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, type PanInfo } from "framer-motion";
+import CoverageCard from "./CoverageCard";
 import SitePhoto from "./SitePhoto";
 import { nearestSites, formatDistance } from "@/lib/geo";
 import { openDirections } from "@/lib/directions";
@@ -214,6 +215,8 @@ export default function DetailPanel({
               ))}
             </ul>
           </div>
+
+          <CoverageCard siteId={site.id} compact />
 
           <div className="mt-5 flex gap-2.5 md:mt-6">
             <button

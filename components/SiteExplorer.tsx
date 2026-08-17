@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import AllSitesView, { type GroupBy } from "./AllSitesView";
 import BoroughChips from "./BoroughChips";
+import CoverageAdmin from "./CoverageAdmin";
+import CoverageProvider from "./CoverageProvider";
 import DetailPanel from "./DetailPanel";
 import GroupByToggle from "./GroupByToggle";
 import Legend from "./Legend";
@@ -44,7 +46,7 @@ const SiteDetailView = dynamic(() => import("./SiteDetailView"), {
 /** Panel width on sm+; also drives how far the map shifts when it opens. */
 const PANEL_WIDTH = 360;
 
-export default function SiteExplorer() {
+function SiteExplorerBody() {
   const [view, setView] = useState<View>("map");
   const [query, setQuery] = useState("");
   const [borough, setBorough] = useState<BoroughFilter>("All");
@@ -212,6 +214,41 @@ export default function SiteExplorer() {
     </AnimatePresence>
   );
 
+  if (view === "coverage") {
+    return (
+      <MotionConfig reducedMotion="user">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
+          className="flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-cream"
+        >
+          <div className="safe-t safe-b safe-x mx-auto flex w-full max-w-[1600px] flex-1 flex-col md:px-10">
+            <header className="flex flex-col gap-3 border-b border-hairline pb-5 md:gap-5 md:pb-6 lg:flex-row lg:items-end lg:justify-between">
+              <TitleBlock title="Coverage" count={visibleSites.length} />
+              <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap md:w-auto md:gap-2.5">
+                <ViewToggle value={view} onChange={setView} />
+              </div>
+            </header>
+
+            <div className="flex flex-1 flex-col pt-5 md:pt-7">
+              <CoverageAdmin onOpenSite={openDetail} />
+            </div>
+
+            <footer className="mt-6 border-t border-hairline pt-4 md:mt-8">
+              <p className="font-mono text-[11px] text-ink-faint">
+                Assignments are made per coverage cluster; every site in a
+                cluster inherits them
+              </p>
+            </footer>
+          </div>
+
+          {detailOverlay}
+        </motion.div>
+      </MotionConfig>
+    );
+  }
+
   if (view === "list") {
     return (
       <MotionConfig reducedMotion="user">
@@ -352,5 +389,17 @@ export default function SiteExplorer() {
         {detailOverlay}
       </div>
     </MotionConfig>
+  );
+}
+
+/**
+ * The provider wraps every view so a cluster assignment edited in Coverage is
+ * reflected on the map panels and the in-depth views immediately.
+ */
+export default function SiteExplorer() {
+  return (
+    <CoverageProvider>
+      <SiteExplorerBody />
+    </CoverageProvider>
   );
 }
