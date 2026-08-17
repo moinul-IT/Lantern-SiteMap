@@ -1,12 +1,15 @@
 /**
- * Procurement coverage — VP and Procurement Team Member per cluster, inherited
- * by every site in that cluster.
+ * Procurement coverage — the Procurement Team Member assigned to each cluster,
+ * inherited by every site in it, plus each site's Grant Analyst.
  *
- * IMPORTANT: the coverage clusters below are NOT the map clusters in `sites.ts`.
- * The procurement org chart groups all 21 sites (shelters included) into three
+ * Only the procurement and Grant Analyst columns of the source org chart are
+ * modelled. The VP column and the "PD" column were reported as inaccurate and
+ * are deliberately not represented here.
+ *
+ * IMPORTANT: these procurement clusters are NOT the map clusters in `sites.ts`.
+ * The procurement chart groups all 21 sites (shelters included) into three
  * clusters of seven; the map clusters group only the 17 supportive-housing sites
- * into four. 18 of 21 sites land differently between the two, so they are kept
- * as separate dimensions rather than forced together.
+ * into four. 18 of 21 sites land differently, so they stay separate dimensions.
  *
  * Everything here is plain data plus pure lookups. Live assignments live in
  * `CoverageProvider`, whose seed is `SEED_ASSIGNMENTS` — swap that provider's
@@ -31,14 +34,6 @@ export type CoverageCluster = {
   name: string;
 };
 
-/** Who may be assigned as a cluster VP. */
-export const VP_PEOPLE: Person[] = [
-  { id: "vp-talisha", name: "Talisha / Taiesha", title: "Vice President" },
-  { id: "vp-andrea", name: "Andrea", title: "Vice President" },
-  { id: "vp-johnathan", name: "Johnathan", title: "Vice President" },
-  { id: "vp-portia", name: "Portia", title: "Vice President" },
-];
-
 /** Who may be assigned as a cluster Procurement Team Member. */
 export const PROCUREMENT_PEOPLE: Person[] = [
   { id: "pr-shatoria", name: "Shatoria Powell", title: "Procurement Analyst" },
@@ -58,7 +53,7 @@ export const PROCUREMENT_PEOPLE: Person[] = [
 ];
 
 export const PEOPLE_BY_ID = new Map<PersonId, Person>(
-  [...VP_PEOPLE, ...PROCUREMENT_PEOPLE].map((p) => [p.id, p]),
+  PROCUREMENT_PEOPLE.map((p) => [p.id, p]),
 );
 
 /** Procurement leadership shown above the per-cluster assignments. */
@@ -69,28 +64,23 @@ export const PROCUREMENT_LEADERSHIP: PersonId[] = [
 ];
 
 export const COVERAGE_CLUSTERS: CoverageCluster[] = [
-  { id: 1, name: "Coverage Cluster 1" },
-  { id: 2, name: "Coverage Cluster 2" },
-  { id: 3, name: "Coverage Cluster 3" },
+  { id: 1, name: "Procurement Cluster 1" },
+  { id: 2, name: "Procurement Cluster 2" },
+  { id: 3, name: "Procurement Cluster 3" },
 ];
 
 export type Assignment = {
-  vpId: PersonId | null;
   procurementId: PersonId | null;
 };
 
-/**
- * Seed state. Procurement members come straight from the org chart. VPs are
- * deliberately left unassigned: the chart's VP column varies per site rather
- * than per cluster, so mapping it to a single VP per cluster would be a guess.
- */
+/** Seed state, straight from the org chart's procurement analysts. */
 export const SEED_ASSIGNMENTS: Record<CoverageClusterId, Assignment> = {
-  1: { vpId: null, procurementId: "pr-shatoria" },
-  2: { vpId: null, procurementId: "pr-desiree" },
-  3: { vpId: null, procurementId: "pr-sertso" },
+  1: { procurementId: "pr-shatoria" },
+  2: { procurementId: "pr-desiree" },
+  3: { procurementId: "pr-sertso" },
 };
 
-/** Site id → coverage cluster, matched on street address in the org chart. */
+/** Site id → procurement cluster, matched on street address in the org chart. */
 export const SITE_COVERAGE_CLUSTER: Record<string, CoverageClusterId> = {
   "rockaway-terrace": 1,
   "stardom-hall": 1,
@@ -118,36 +108,34 @@ export const SITE_COVERAGE_CLUSTER: Record<string, CoverageClusterId> = {
 };
 
 /**
- * Per-site contacts from the "GA" and "PD" columns of the org chart. The source
- * uses those abbreviations without expanding them, so they are shown verbatim
- * rather than guessed at.
+ * Grant Analyst per site. This is genuinely per-site, not per-cluster: Cluster 1
+ * is six Ashraya and one Wei, Cluster 2 five Anel and two Wei, so it cannot be
+ * folded into the cluster assignment.
  */
-export type SiteContacts = { ga: string; pd: string };
+export const SITE_GRANT_ANALYST: Record<string, string> = {
+  "rockaway-terrace": "Ashraya",
+  "stardom-hall": "Ashraya",
+  "vicinitas-hall": "Ashraya",
+  "huntersmoon-hall": "Wei",
+  "lindenguild-hall": "Ashraya",
+  "prospero-hall": "Ashraya",
+  "schafer-hall": "Ashraya",
 
-export const SITE_CONTACTS: Record<string, SiteContacts> = {
-  "rockaway-terrace": { ga: "Ashraya", pd: "Rosemary Gordon" },
-  "stardom-hall": { ga: "Ashraya", pd: "Cyril Jacobs" },
-  "vicinitas-hall": { ga: "Ashraya", pd: "KC Hunt" },
-  "huntersmoon-hall": { ga: "Wei", pd: "Michelle Perez" },
-  "lindenguild-hall": { ga: "Ashraya", pd: "Claudette Stubbs" },
-  "prospero-hall": { ga: "Ashraya", pd: "James Fritts" },
-  "schafer-hall": { ga: "Ashraya", pd: "Trevor Griffith" },
+  "amber-hall": "Anel",
+  "audubon-hall": "Anel",
+  "cedar-hall": "Anel",
+  "liberty-plaza": "Wei",
+  "savanna-hall": "Anel",
+  "leeward-hall": "Wei",
+  "jasper-hall": "Wei",
 
-  "amber-hall": { ga: "Anel", pd: "Anthony Mercedes" },
-  "audubon-hall": { ga: "Anel", pd: "Carlos Castro" },
-  "cedar-hall": { ga: "Anel", pd: "Trevor Griffith" },
-  "liberty-plaza": { ga: "Wei", pd: "Shawna Scott" },
-  "savanna-hall": { ga: "Anel", pd: "Yolanda Jones" },
-  "leeward-hall": { ga: "Wei", pd: "Anthony Mercedes" },
-  "jasper-hall": { ga: "Wei", pd: "Tamika Coates" },
-
-  "clover-hall": { ga: "Ashraya", pd: "Niesha Sergeant" },
-  "euclid-glenmore": { ga: "Anel", pd: "Ebonie Mickens" },
-  "laurel-hall": { ga: "Anel", pd: "Michael Wells" },
-  "hudson-bay": { ga: "Anel", pd: "Tasha Williams" },
-  "rustin-house": { ga: "Anel", pd: "John Lim" },
-  "hunterfly-trace": { ga: "Ashraya", pd: "Paul Amoah" },
-  "silverleaf-hall": { ga: "Anel", pd: "Yolanda Jones" },
+  "clover-hall": "Ashraya",
+  "euclid-glenmore": "Anel",
+  "laurel-hall": "Anel",
+  "hudson-bay": "Anel",
+  "rustin-house": "Anel",
+  "hunterfly-trace": "Ashraya",
+  "silverleaf-hall": "Anel",
 };
 
 export function coverageClusterFor(siteId: string): CoverageClusterId | null {
@@ -162,7 +150,11 @@ export function personById(id: PersonId | null): Person | null {
   return id ? (PEOPLE_BY_ID.get(id) ?? null) : null;
 }
 
-/** Site ids belonging to a coverage cluster — used by the admin counts. */
+export function grantAnalystFor(siteId: string): string | null {
+  return SITE_GRANT_ANALYST[siteId] ?? null;
+}
+
+/** Site ids belonging to a procurement cluster — used by the admin counts. */
 export function siteIdsInCoverageCluster(id: CoverageClusterId): string[] {
   return Object.entries(SITE_COVERAGE_CLUSTER)
     .filter(([, cluster]) => cluster === id)

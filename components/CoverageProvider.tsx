@@ -11,6 +11,7 @@ import {
 import {
   SEED_ASSIGNMENTS,
   coverageClusterFor,
+  grantAnalystFor,
   personById,
   type Assignment,
   type CoverageClusterId,
@@ -19,17 +20,16 @@ import {
 } from "@/lib/coverage";
 
 /**
- * Single source of truth for who covers which cluster. Every site reads through
- * here, so changing a cluster's VP or Procurement member updates every site in
- * that cluster in the same render — there is no per-site copy to keep in sync.
+ * Single source of truth for who covers which procurement cluster. Every site
+ * reads through here, so changing a cluster's Procurement member updates every
+ * site in that cluster in the same render — there is no per-site copy to sync.
  *
- * Backend swap: replace the `useState` seed with fetched data and make the three
+ * Backend swap: replace the `useState` seed with fetched data and make the
  * mutators call the API (optimistically, or refetch). Consumers stay unchanged.
  */
 
 type CoverageContextValue = {
   assignments: Record<CoverageClusterId, Assignment>;
-  setVp: (cluster: CoverageClusterId, personId: PersonId | null) => void;
   setProcurement: (
     cluster: CoverageClusterId,
     personId: PersonId | null,
@@ -41,8 +41,9 @@ type CoverageContextValue = {
 
 export type SiteCoverage = {
   cluster: CoverageClusterId | null;
-  vp: Person | null;
   procurement: Person | null;
+  /** Per-site, so it comes straight from the data rather than the cluster. */
+  grantAnalyst: string | null;
 };
 
 const CoverageContext = createContext<CoverageContextValue | null>(null);
@@ -54,16 +55,6 @@ export default function CoverageProvider({
 }) {
   const [assignments, setAssignments] =
     useState<Record<CoverageClusterId, Assignment>>(SEED_ASSIGNMENTS);
-
-  const setVp = useCallback(
-    (cluster: CoverageClusterId, personId: PersonId | null) => {
-      setAssignments((current) => ({
-        ...current,
-        [cluster]: { ...current[cluster], vpId: personId },
-      }));
-    },
-    [],
-  );
 
   const setProcurement = useCallback(
     (cluster: CoverageClusterId, personId: PersonId | null) => {
@@ -78,7 +69,7 @@ export default function CoverageProvider({
   const clearCluster = useCallback((cluster: CoverageClusterId) => {
     setAssignments((current) => ({
       ...current,
-      [cluster]: { vpId: null, procurementId: null },
+      [cluster]: { procurementId: null },
     }));
   }, []);
 
@@ -86,27 +77,20 @@ export default function CoverageProvider({
     (siteId: string): SiteCoverage => {
       const cluster = coverageClusterFor(siteId);
       if (cluster === null) {
-        return { cluster: null, vp: null, procurement: null };
+        return { cluster: null, procurement: null, grantAnalyst: null };
       }
-      const assignment = assignments[cluster];
       return {
         cluster,
-        vp: personById(assignment.vpId),
-        procurement: personById(assignment.procurementId),
+        procurement: personById(assignments[cluster].procurementId),
+        grantAnalyst: grantAnalystFor(siteId),
       };
     },
     [assignments],
   );
 
   const value = useMemo(
-    () => ({
-      assignments,
-      setVp,
-      setProcurement,
-      clearCluster,
-      coverageForSite,
-    }),
-    [assignments, setVp, setProcurement, clearCluster, coverageForSite],
+    () => ({ assignments, setProcurement, clearCluster, coverageForSite }),
+    [assignments, setProcurement, clearCluster, coverageForSite],
   );
 
   return (

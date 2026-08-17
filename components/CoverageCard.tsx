@@ -1,15 +1,12 @@
 "use client";
 
 import { useCoverage } from "./CoverageProvider";
-import {
-  SITE_CONTACTS,
-  coverageClusterName,
-  type Person,
-} from "@/lib/coverage";
+import { coverageClusterName, type Person } from "@/lib/coverage";
 
 /**
- * VP + Procurement Team Member for a site, inherited from its coverage cluster.
- * `compact` is the map-side panel; the full form is used in the in-depth view.
+ * Procurement Team Member (inherited from the site's procurement cluster) and
+ * Grant Analyst (per site). `compact` is the map-side panel; the fuller form is
+ * used in the in-depth view.
  */
 export default function CoverageCard({
   siteId,
@@ -19,8 +16,7 @@ export default function CoverageCard({
   compact?: boolean;
 }) {
   const { coverageForSite } = useCoverage();
-  const { cluster, vp, procurement } = coverageForSite(siteId);
-  const contacts = SITE_CONTACTS[siteId];
+  const { cluster, procurement, grantAnalyst } = coverageForSite(siteId);
 
   // The admin office and anything outside the org chart has no coverage.
   if (cluster === null) return null;
@@ -39,16 +35,9 @@ export default function CoverageCard({
           compact ? "mt-2.5 space-y-2.5" : "mt-3 grid gap-3 sm:grid-cols-2"
         }
       >
-        <PersonRow label="Vice President" person={vp} />
         <PersonRow label="Procurement" person={procurement} />
+        <PlainRow label="Grant Analyst" value={grantAnalyst} />
       </div>
-
-      {!compact && contacts && (
-        <div className="mt-3 grid gap-3 border-t border-hairline pt-3 sm:grid-cols-2">
-          <SiteContactRow label="GA" value={contacts.ga} />
-          <SiteContactRow label="PD" value={contacts.pd} />
-        </div>
-      )}
     </div>
   );
 }
@@ -89,26 +78,35 @@ function PersonRow({
           )}
         </>
       ) : (
-        <p className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-faint">
-          <span
-            aria-hidden="true"
-            className="size-1.5 rounded-full border border-ink-faint"
-          />
-          Unassigned
-        </p>
+        <Unassigned />
       )}
     </div>
   );
 }
 
-/** Verbatim GA / PD contact from the org chart. */
-function SiteContactRow({ label, value }: { label: string; value: string }) {
+function PlainRow({ label, value }: { label: string; value: string | null }) {
   return (
     <div className="min-w-0">
       <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
         {label}
       </p>
-      <p className="mt-0.5 truncate text-sm text-ink">{value}</p>
+      {value ? (
+        <p className="mt-0.5 truncate text-sm font-medium text-ink">{value}</p>
+      ) : (
+        <Unassigned />
+      )}
     </div>
+  );
+}
+
+function Unassigned() {
+  return (
+    <p className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-faint">
+      <span
+        aria-hidden="true"
+        className="size-1.5 rounded-full border border-ink-faint"
+      />
+      Unassigned
+    </p>
   );
 }

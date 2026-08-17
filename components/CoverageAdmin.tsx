@@ -6,7 +6,7 @@ import {
   COVERAGE_CLUSTERS,
   PROCUREMENT_LEADERSHIP,
   PROCUREMENT_PEOPLE,
-  VP_PEOPLE,
+  grantAnalystFor,
   personById,
   siteIdsInCoverageCluster,
   type Person,
@@ -21,7 +21,7 @@ export default function CoverageAdmin({
 }: {
   onOpenSite: (siteId: string) => void;
 }) {
-  const { assignments, setVp, setProcurement, clearCluster } = useCoverage();
+  const { assignments, setProcurement, clearCluster } = useCoverage();
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -55,8 +55,6 @@ export default function CoverageAdmin({
         {COVERAGE_CLUSTERS.map((cluster, index) => {
           const assignment = assignments[cluster.id];
           const siteIds = siteIdsInCoverageCluster(cluster.id);
-          const assignedCount =
-            (assignment.vpId ? 1 : 0) + (assignment.procurementId ? 1 : 0);
 
           return (
             <motion.section
@@ -81,12 +79,6 @@ export default function CoverageAdmin({
 
               <div className="flex flex-1 flex-col gap-4 px-5 py-4">
                 <PersonPicker
-                  label="Vice President"
-                  people={VP_PEOPLE}
-                  value={assignment.vpId}
-                  onChange={(id) => setVp(cluster.id, id)}
-                />
-                <PersonPicker
                   label="Procurement Team Member"
                   people={PROCUREMENT_PEOPLE}
                   value={assignment.procurementId}
@@ -95,7 +87,9 @@ export default function CoverageAdmin({
 
                 <div>
                   <p className="eyebrow">Sites inheriting this</p>
-                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {/* Grant Analyst is per site, not per cluster, so it is shown
+                      on each row rather than as a cluster-level field. */}
+                  <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
                     {siteIds.map((siteId) => {
                       const site = SITES_BY_ID.get(siteId);
                       if (!site) return null;
@@ -104,9 +98,14 @@ export default function CoverageAdmin({
                           <button
                             type="button"
                             onClick={() => onOpenSite(siteId)}
-                            className="flex min-h-11 items-center rounded-full border border-hairline px-3 text-[12px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0 md:px-2.5 md:py-1 md:text-[11px]"
+                            className="flex min-h-11 w-full items-center gap-3 py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
                           >
-                            {site.name}
+                            <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                              {site.name}
+                            </span>
+                            <span className="shrink-0 font-mono text-[11px] text-ink-faint">
+                              GA {grantAnalystFor(siteId) ?? "—"}
+                            </span>
                           </button>
                         </li>
                       );
@@ -117,10 +116,10 @@ export default function CoverageAdmin({
                 <button
                   type="button"
                   onClick={() => clearCluster(cluster.id)}
-                  disabled={assignedCount === 0}
+                  disabled={assignment.procurementId === null}
                   className="mt-auto min-h-11 self-start rounded-xl border border-hairline px-3.5 py-2 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep disabled:cursor-not-allowed disabled:opacity-40 md:min-h-0"
                 >
-                  Remove both assignments
+                  Remove assignment
                 </button>
               </div>
             </motion.section>

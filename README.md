@@ -165,29 +165,33 @@ component falls back to that same block rather than a broken image.
 - **All 21 `photo` fields are `null`**, so every site currently shows the
   monogram placeholder.
 
-## Procurement coverage (VP + Procurement Team Member)
+## Procurement coverage
 
-Each **coverage cluster** carries one VP and one Procurement Team Member; every
-site in that cluster inherits both. Sites hold no copy of their own, so changing a
-cluster assignment updates every site in the same render.
+Each **procurement cluster** carries one Procurement Team Member; every site in
+that cluster inherits them. Sites hold no copy of their own, so changing a cluster
+assignment updates every site in the same render.
 
-- `lib/coverage.ts` — people, the three coverage clusters, site→cluster mapping,
-  per-site GA/PD contacts, and pure lookups.
+Each site also shows its **Grant Analyst (GA)**. That one is genuinely per site,
+not per cluster — Cluster 1 is six Ashraya and one Wei — so it is read straight
+from the data rather than inherited.
+
+Only the procurement and Grant Analyst columns of the source org chart are
+modelled. The VP column and the "PD" column were reported as inaccurate and are
+not represented anywhere in the app.
+
+- `lib/coverage.ts` — people, the three procurement clusters, site→cluster
+  mapping, per-site Grant Analyst, and pure lookups.
 - `components/CoverageProvider.tsx` — the only mutable state. **This is the
   backend seam:** replace the `useState(SEED_ASSIGNMENTS)` seed with fetched data
-  and point the three mutators at your API. Nothing else changes.
+  and point the mutators at your API. Nothing else changes.
 - `components/CoverageCard.tsx` — shown on the map panel (compact) and the
-  in-depth view (full, plus GA/PD). Renders "Unassigned" when nobody is set, and
-  nothing at all for places outside the org chart (the admin office).
+  in-depth view. Renders "Unassigned" when nobody is set, and nothing at all for
+  places outside the org chart (the admin office).
 - `components/CoverageAdmin.tsx` — the **Coverage** view: leadership, then one
-  card per cluster with VP / Procurement pickers, the sites inheriting them, and
-  a remove action.
+  card per cluster with its Procurement picker, the sites inheriting it with each
+  site's GA, and a remove action.
 
-> **Coverage clusters are not the map clusters.** The procurement org chart groups
+> **Procurement clusters are not the map clusters.** The procurement chart groups
 > all 21 sites (shelters included) into three clusters of seven; the map clusters
 > group only the 17 supportive-housing sites into four. 18 of 21 sites land
 > differently, so they are modelled as separate dimensions.
-
-VPs ship **unassigned**: the org chart's VP column varies per site rather than per
-cluster, so a single VP per cluster could not be derived from it without guessing.
-The four VP names are in the picker, ready to assign.
