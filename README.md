@@ -207,15 +207,20 @@ clusters. All 21 sites are covered:
 
 | VP | Sites |
 | --- | --- |
-| Talisha Van Brackle — Shelter Services | 4 (exactly the four shelters) |
-| Taiesha Zachary — Operations | 0 |
+| Talisha Van Brackle — Shelter Services | 4 (the four shelters) |
+| Taiesha Zachary — Operations | the same 4 shelters |
 | Jonathan Castro | 5 |
 | Andrea Dogostiano | 7 |
 | Portia Linton-Blake | 5 |
 
-Talisha covers the shelter sites, which are precisely the sites outside the
-supportive-housing cluster model (`cluster: null`). A test asserts that her
-portfolio and that set stay identical.
+A site can have more than one VP. The shelters answer to both Talisha Van Brackle
+(Shelter Services) and Taiesha Zachary (Operations), which is what the (TV) / (TZ)
+notes on their individual roles reflect. Those four are precisely the sites
+outside the supportive-housing cluster model (`cluster: null`).
+
+The site views label the field "Vice Presidents" when there is more than one. In
+the Coverage view each VP card lists its sites, notes any other VP also covering
+them, and offers add / remove per site plus a whole-portfolio hand-over.
 
 Role initials are expanded in the in-depth view: SPD Senior Program Director,
 PD Program Director, APD Assistant Program Director, PA Program Assistant,

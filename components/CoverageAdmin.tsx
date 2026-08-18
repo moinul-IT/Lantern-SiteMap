@@ -12,7 +12,7 @@ import {
   type Person,
   type PersonId,
 } from "@/lib/coverage";
-import { PROGRAM_LEADERSHIP, VPS, type VpId } from "@/lib/oversight";
+import { PROGRAM_LEADERSHIP, VPS } from "@/lib/oversight";
 import { SITES, SITES_BY_ID } from "@/lib/sites";
 
 const EASE = [0.22, 0.61, 0.36, 1] as const;
@@ -27,16 +27,22 @@ export default function CoverageAdmin({
     setProcurement,
     clearCluster,
     siteVps,
-    setSiteVp,
+    addVpToSite,
+    removeVpFromSite,
     reassignVpPortfolio,
   } = useCoverage();
 
-  // Grouped from live state, so a reassignment moves the site between columns.
+  // Grouped from live state, so an edit moves the site between cards. A site may
+  // appear under more than one VP — the shelters answer to two.
   const portfolios = VPS.map((vp) => ({
     vp,
-    siteIds: SITES.filter((s) => siteVps[s.id] === vp.id).map((s) => s.id),
+    siteIds: SITES.filter((s) => (siteVps[s.id] ?? []).includes(vp.id)).map(
+      (s) => s.id,
+    ),
   }));
-  const unassigned = SITES.filter((s) => !siteVps[s.id]).map((s) => s.id);
+  const unassigned = SITES.filter(
+    (s) => (siteVps[s.id] ?? []).length === 0,
+  ).map((s) => s.id);
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -98,17 +104,83 @@ export default function CoverageAdmin({
                 <p className="text-[13px] text-ink-faint">No sites assigned.</p>
               ) : (
                 <ul className="divide-y divide-hairline border-t border-hairline">
-                  {portfolio.siteIds.map((siteId) => (
-                    <SiteVpRow
-                      key={siteId}
-                      siteId={siteId}
-                      value={siteVps[siteId] ?? null}
-                      onChange={(id) => setSiteVp(siteId, id)}
-                      onOpen={() => onOpenSite(siteId)}
-                    />
-                  ))}
+                  {portfolio.siteIds.map((siteId) => {
+                    const site = SITES_BY_ID.get(siteId);
+                    if (!site) return null;
+                    const alsoUnder = (siteVps[siteId] ?? [])
+                      .filter((id) => id !== portfolio.vp.id)
+                      .map((id) => VPS.find((v) => v.id === id)?.name)
+                      .filter(Boolean);
+                    return (
+                      <li
+                        key={siteId}
+                        className="flex min-h-11 items-center gap-2 py-2"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => onOpenSite(siteId)}
+                          className="min-w-0 flex-1 text-left transition-colors duration-200 hover:text-ink-soft focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40"
+                        >
+                          <span className="block truncate text-[13px] text-ink">
+                            {site.name}
+                          </span>
+                          {alsoUnder.length > 0 && (
+                            <span className="block truncate font-mono text-[10px] text-ink-faint">
+                              also {alsoUnder.join(", ")}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeVpFromSite(siteId, portfolio.vp.id)
+                          }
+                          aria-label={`Remove ${site.name} from ${portfolio.vp.name}`}
+                          className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors duration-200 hover:bg-cream-deep hover:text-ink"
+                        >
+                          <svg
+                            viewBox="0 0 16 16"
+                            className="size-3"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M3.5 3.5l9 9m0-9l-9 9"
+                              stroke="currentColor"
+                              strokeWidth="1.6"
+                              strokeLinecap="round"
+                              fill="none"
+                            />
+                          </svg>
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
+
+              <label className="block">
+                <span className="eyebrow">Add a site</span>
+                <span className="mt-1.5 flex h-11 items-center rounded-xl border border-hairline bg-cream/60 px-3">
+                  <select
+                    value=""
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        addVpToSite(event.target.value, portfolio.vp.id);
+                      }
+                    }}
+                    className="w-full bg-transparent text-base text-ink focus:outline-none md:text-sm"
+                  >
+                    <option value="">Choose a site…</option>
+                    {SITES.filter(
+                      (s) => !(siteVps[s.id] ?? []).includes(portfolio.vp.id),
+                    ).map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
 
               <label className="mt-auto block">
                 <span className="eyebrow">Hand whole portfolio to</span>
@@ -116,12 +188,14 @@ export default function CoverageAdmin({
                   <select
                     value=""
                     disabled={portfolio.siteIds.length === 0}
-                    onChange={(event) =>
-                      reassignVpPortfolio(
-                        portfolio.vp.id,
-                        event.target.value || null,
-                      )
-                    }
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        reassignVpPortfolio(
+                          portfolio.vp.id,
+                          event.target.value,
+                        );
+                      }
+                    }}
                     className="w-full bg-transparent text-base text-ink focus:outline-none disabled:opacity-40 md:text-sm"
                   >
                     <option value="">Choose a VP…</option>
@@ -142,23 +216,50 @@ export default function CoverageAdmin({
         <section className="rounded-2xl border border-hairline bg-paper p-5 shadow-float">
           <p className="eyebrow">Sites with no VP</p>
           <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
-            {unassigned.map((siteId) => (
-              <SiteVpRow
-                key={siteId}
-                siteId={siteId}
-                value={null}
-                onChange={(id) => setSiteVp(siteId, id)}
-                onOpen={() => onOpenSite(siteId)}
-              />
-            ))}
+            {unassigned.map((siteId) => {
+              const site = SITES_BY_ID.get(siteId);
+              if (!site) return null;
+              return (
+                <li
+                  key={siteId}
+                  className="flex min-h-11 items-center gap-2 py-2"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onOpenSite(siteId)}
+                    className="min-w-0 flex-1 truncate text-left text-[13px] text-ink transition-colors duration-200 hover:text-ink-soft"
+                  >
+                    {site.name}
+                  </button>
+                  <select
+                    aria-label={`Assign a VP to ${site.name}`}
+                    value=""
+                    onChange={(event) => {
+                      if (event.target.value) {
+                        addVpToSite(siteId, event.target.value);
+                      }
+                    }}
+                    className="max-w-[9rem] shrink-0 rounded-lg border border-hairline bg-cream/60 px-1.5 py-1 text-base text-ink-soft focus:outline-none md:text-[12px]"
+                  >
+                    <option value="">Assign VP…</option>
+                    {VPS.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}
-      {/* Leadership is org-wide, not per cluster, so it sits above the table. */}
+
+      {/* ── Procurement coverage ───────────────────────────────────────── */}
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.34, ease: EASE }}
+        transition={{ duration: 0.34, delay: 0.08, ease: EASE }}
         className="rounded-2xl border border-hairline bg-paper p-5 shadow-float"
       >
         <p className="eyebrow">Procurement leadership</p>
@@ -192,7 +293,7 @@ export default function CoverageAdmin({
               animate={{ opacity: 1, y: 0 }}
               transition={{
                 duration: 0.36,
-                delay: 0.06 + index * 0.06,
+                delay: 0.1 + index * 0.06,
                 ease: EASE,
               }}
               className="flex flex-col overflow-hidden rounded-2xl border border-hairline bg-paper shadow-float"
@@ -293,47 +394,5 @@ function PersonPicker({
         {selected ? selected.title : "No one assigned yet"}
       </span>
     </label>
-  );
-}
-
-/** One site row inside a VP portfolio, with its own VP picker. */
-function SiteVpRow({
-  siteId,
-  value,
-  onChange,
-  onOpen,
-}: {
-  siteId: string;
-  value: VpId | null;
-  onChange: (id: VpId | null) => void;
-  onOpen: () => void;
-}) {
-  const site = SITES_BY_ID.get(siteId);
-  if (!site) return null;
-
-  return (
-    <li className="flex min-h-11 items-center gap-2 py-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="min-w-0 flex-1 truncate text-left text-[13px] text-ink transition-colors duration-200 hover:text-ink-soft focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40"
-      >
-        {site.name}
-      </button>
-      <select
-        aria-label={`Vice President for ${site.name}`}
-        value={value ?? ""}
-        onChange={(event) => onChange(event.target.value || null)}
-        /* 16px on mobile, else iOS Safari zooms the page on focus. */
-        className="max-w-[9rem] shrink-0 rounded-lg border border-hairline bg-cream/60 px-1.5 py-1 text-base text-ink-soft focus:outline-none md:text-[12px]"
-      >
-        <option value="">Unassigned</option>
-        {VPS.map((v) => (
-          <option key={v.id} value={v.id}>
-            {v.name}
-          </option>
-        ))}
-      </select>
-    </li>
   );
 }

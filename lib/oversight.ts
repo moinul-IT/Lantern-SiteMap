@@ -4,7 +4,8 @@
  *
  * VP is assigned per site here, not per cluster: the chart groups sites under a
  * VP directly, and those groupings do not line up with either the map clusters
- * or the procurement clusters. All 21 sites are covered.
+ * or the procurement clusters. All 21 sites are covered, and a site may have
+ * more than one VP.
  *
  * Several sites share one staff roster (Cedar/Schafer, Lindenguild/Silverleaf,
  * Amber/Leeward). Those carry a `groupLabel` and the same staff list, with the
@@ -71,7 +72,12 @@ export type StaffEntry = {
 };
 
 export type SiteTeam = {
-  vpId: VpId;
+  /**
+   * A site can sit under more than one VP: the shelters answer to both the VP of
+   * Shelter Services and the VP of Operations, which is what the (TV) / (TZ)
+   * notes on their individual roles reflect.
+   */
+  vpIds: VpId[];
   /** Set only when one roster genuinely covers more than one building. */
   groupLabel?: string;
   /** The chart's own name for the building, where it differs from ours. */
@@ -98,12 +104,13 @@ const AMBER_LEEWARD: StaffEntry[] = [
 ];
 
 export const SITE_TEAM: Record<string, SiteTeam> = {
-  // ── Talisha Van Brackle — Shelter Services ──────────────────────────────
+  // ── Shelters: Talisha Van Brackle (Shelter Services) + Taiesha Zachary
+  //    (Operations) both oversee these four ─────────────────────────────────
   // The four shelters, i.e. every site outside the supportive-housing cluster
   // model. The (TZ) / (TV) notes on individual roles are verbatim from the
   // chart and are left alone.
   "laurel-hall": {
-    vpId: "vp-talisha",
+    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "PD", name: "Michael Wells", note: "TZ" },
       { role: "DPO", name: "Sheryl Lowe", note: "TV" },
@@ -112,7 +119,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "liberty-plaza": {
-    vpId: "vp-talisha",
+    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "PD", name: "Shawna Scott" },
       { role: "DPO", name: "Adedeji Adewusi" },
@@ -122,7 +129,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   // The chart lists this one by its street, Stillwell Avenue.
   "hudson-bay": {
-    vpId: "vp-talisha",
+    vpIds: ["vp-talisha", "vp-taiesha"],
     alsoKnownAs: "Stillwell Avenue",
     staff: [
       { role: "DPO", name: "Vacant" },
@@ -132,7 +139,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rockaway-terrace": {
-    vpId: "vp-talisha",
+    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "DPO", name: "Shaquille Shepard" },
       { role: "DSS", name: "Shannon Pierre" },
@@ -143,7 +150,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
 
   // ── Jonathan Castro ─────────────────────────────────────────────────────
   "savanna-hall": {
-    vpId: "vp-jonathan",
+    vpIds: ["vp-jonathan"],
     staff: [
       { role: "SPD", name: "Yolanda Jones" },
       { role: "PD", name: "Vacant" },
@@ -152,17 +159,17 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "lindenguild-hall": {
-    vpId: "vp-jonathan",
+    vpIds: ["vp-jonathan"],
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
     staff: LINDENGUILD_SILVERLEAF,
   },
   "silverleaf-hall": {
-    vpId: "vp-jonathan",
+    vpIds: ["vp-jonathan"],
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
     staff: LINDENGUILD_SILVERLEAF,
   },
   "vicinitas-hall": {
-    vpId: "vp-jonathan",
+    vpIds: ["vp-jonathan"],
     staff: [
       { role: "PD", name: "KC Hunt" },
       { role: "APD", name: "Jazmyne Nichols" },
@@ -170,7 +177,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "audubon-hall": {
-    vpId: "vp-jonathan",
+    vpIds: ["vp-jonathan"],
     staff: [
       { role: "PD", name: "Carlos Castro" },
       { role: "APD", name: "Ashley Warren" },
@@ -180,24 +187,24 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
 
   // ── Andrea Dogostiano ───────────────────────────────────────────────────
   "cedar-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "schafer-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "prospero-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     staff: [
       { role: "PD", name: "James Fritts" },
       { role: "APD", name: "Phyllis Ferrara" },
     ],
   },
   "jasper-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     staff: [
       { role: "PD", name: "Tamika Coates" },
       { role: "APD", name: "Vacant" },
@@ -205,23 +212,23 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "stardom-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     staff: [{ role: "PD", name: "Cyril Jacobs" }],
   },
   "amber-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     groupLabel: "Amber Hall / Leeward Hall",
     staff: AMBER_LEEWARD,
   },
   "leeward-hall": {
-    vpId: "vp-andrea",
+    vpIds: ["vp-andrea"],
     groupLabel: "Amber Hall / Leeward Hall",
     staff: AMBER_LEEWARD,
   },
 
   // ── Portia Linton-Blake ─────────────────────────────────────────────────
   "huntersmoon-hall": {
-    vpId: "vp-portia",
+    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Michelle Perez" },
       { role: "APD", name: "Samuel Asante" },
@@ -229,7 +236,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "euclid-glenmore": {
-    vpId: "vp-portia",
+    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Ebonie Mickens" },
       { role: "APD", name: "Vacant" },
@@ -237,7 +244,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "clover-hall": {
-    vpId: "vp-portia",
+    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Niesha Sergeant" },
       { role: "APD", name: "Eugene Brown" },
@@ -245,7 +252,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rustin-house": {
-    vpId: "vp-portia",
+    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "John Lim" },
       { role: "APD", name: "Colette Garcia" },
@@ -253,7 +260,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "hunterfly-trace": {
-    vpId: "vp-portia",
+    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Paul Amoah" },
       { role: "PA", name: "Rubin Tejada" },
@@ -294,6 +301,6 @@ export function contractForSite(siteId: string) {
 /** Sites a VP currently oversees, per the seed data. */
 export function siteIdsForVp(id: VpId): string[] {
   return Object.entries(SITE_TEAM)
-    .filter(([, team]) => team.vpId === id)
+    .filter(([, team]) => team.vpIds.includes(id))
     .map(([siteId]) => siteId);
 }

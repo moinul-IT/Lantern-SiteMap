@@ -17,7 +17,7 @@ export default function CoverageCard({
   compact?: boolean;
 }) {
   const { coverageForSite } = useCoverage();
-  const { cluster, procurement, grantAnalyst, vp, team, contract } =
+  const { cluster, procurement, grantAnalyst, vps, team, contract } =
     coverageForSite(siteId);
 
   // The admin office sits outside both charts.
@@ -44,14 +44,18 @@ export default function CoverageCard({
             compact ? "mt-2.5 space-y-2.5" : "mt-3 grid gap-3 sm:grid-cols-2"
           }
         >
-          <Field label="Vice President">
-            {vp ? (
-              <>
-                <Name>{vp.name}</Name>
-                <Sub>
-                  {vp.department ? `${vp.title} · ${vp.department}` : vp.title}
-                </Sub>
-              </>
+          <Field label={vps.length > 1 ? "Vice Presidents" : "Vice President"}>
+            {vps.length > 0 ? (
+              vps.map((vp, index) => (
+                <div key={vp.id} className={index > 0 ? "mt-1.5" : undefined}>
+                  <Name>{vp.name}</Name>
+                  <Sub>
+                    {vp.department
+                      ? `${vp.title} · ${vp.department}`
+                      : vp.title}
+                  </Sub>
+                </div>
+              ))
             ) : (
               <Unassigned />
             )}

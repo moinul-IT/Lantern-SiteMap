@@ -44,11 +44,12 @@ type CoverageContextValue = {
     personId: PersonId | null,
   ) => void;
   clearCluster: (cluster: CoverageClusterId) => void;
-  /** Site id → VP id. Editable, seeded from the oversight chart. */
-  siteVps: Record<string, VpId | null>;
-  setSiteVp: (siteId: string, vpId: VpId | null) => void;
-  /** Reassigns every site currently under `from` to `to`. */
-  reassignVpPortfolio: (from: VpId, to: VpId | null) => void;
+  /** Site id → its VPs. A site may have several; seeded from the chart. */
+  siteVps: Record<string, VpId[]>;
+  addVpToSite: (siteId: string, vpId: VpId) => void;
+  removeVpFromSite: (siteId: string, vpId: VpId) => void;
+  /** Moves every site under `from` to `to`, without creating duplicates. */
+  reassignVpPortfolio: (from: VpId, to: VpId) => void;
   /** Resolved oversight + coverage for one site. */
   coverageForSite: (siteId: string) => SiteCoverage;
 };
@@ -58,14 +59,15 @@ export type SiteCoverage = {
   procurement: Person | null;
   /** Per-site, so it comes straight from the data rather than the cluster. */
   grantAnalyst: string | null;
-  vp: Vp | null;
+  /** Every VP over this site, in chart order. */
+  vps: Vp[];
   team: SiteTeam | null;
   contract: "DOHMH" | "HASA" | null;
 };
 
-/** Seed: the VP each site sits under on the oversight chart. */
-const SEED_SITE_VPS: Record<string, VpId | null> = Object.fromEntries(
-  Object.entries(SITE_TEAM).map(([siteId, team]) => [siteId, team.vpId]),
+/** Seed: the VPs each site sits under on the oversight chart. */
+const SEED_SITE_VPS: Record<string, VpId[]> = Object.fromEntries(
+  Object.entries(SITE_TEAM).map(([siteId, team]) => [siteId, [...team.vpIds]]),
 );
 
 const CoverageContext = createContext<CoverageContextValue | null>(null);
@@ -77,21 +79,33 @@ export default function CoverageProvider({
 }) {
   const [assignments, setAssignments] =
     useState<Record<CoverageClusterId, Assignment>>(SEED_ASSIGNMENTS);
-  const [siteVps, setSiteVps] =
-    useState<Record<string, VpId | null>>(SEED_SITE_VPS);
+  const [siteVps, setSiteVps] = useState<Record<string, VpId[]>>(SEED_SITE_VPS);
 
-  const setSiteVp = useCallback((siteId: string, vpId: VpId | null) => {
-    setSiteVps((current) => ({ ...current, [siteId]: vpId }));
+  const addVpToSite = useCallback((siteId: string, vpId: VpId) => {
+    setSiteVps((current) => {
+      const existing = current[siteId] ?? [];
+      if (existing.includes(vpId)) return current;
+      return { ...current, [siteId]: [...existing, vpId] };
+    });
+  }, []);
+
+  const removeVpFromSite = useCallback((siteId: string, vpId: VpId) => {
+    setSiteVps((current) => ({
+      ...current,
+      [siteId]: (current[siteId] ?? []).filter((id) => id !== vpId),
+    }));
   }, []);
 
   /** Bulk move, so handing a whole portfolio to another VP is one action. */
-  const reassignVpPortfolio = useCallback((from: VpId, to: VpId | null) => {
+  const reassignVpPortfolio = useCallback((from: VpId, to: VpId) => {
     setSiteVps((current) =>
       Object.fromEntries(
-        Object.entries(current).map(([siteId, vpId]) => [
-          siteId,
-          vpId === from ? to : vpId,
-        ]),
+        Object.entries(current).map(([siteId, ids]) => {
+          if (!ids.includes(from)) return [siteId, ids];
+          const next = ids.filter((id) => id !== from);
+          if (!next.includes(to)) next.push(to);
+          return [siteId, next];
+        }),
       ),
     );
   }, []);
@@ -117,7 +131,9 @@ export default function CoverageProvider({
     (siteId: string): SiteCoverage => {
       const cluster = coverageClusterFor(siteId);
       const shared = {
-        vp: vpById(siteVps[siteId] ?? null),
+        vps: (siteVps[siteId] ?? [])
+          .map((id) => vpById(id))
+          .filter((v): v is Vp => v !== null),
         team: teamForSite(siteId),
         contract: contractForSite(siteId),
       };
@@ -145,7 +161,8 @@ export default function CoverageProvider({
       setProcurement,
       clearCluster,
       siteVps,
-      setSiteVp,
+      addVpToSite,
+      removeVpFromSite,
       reassignVpPortfolio,
       coverageForSite,
     }),
@@ -154,7 +171,8 @@ export default function CoverageProvider({
       setProcurement,
       clearCluster,
       siteVps,
-      setSiteVp,
+      addVpToSite,
+      removeVpFromSite,
       reassignVpPortfolio,
       coverageForSite,
     ],
