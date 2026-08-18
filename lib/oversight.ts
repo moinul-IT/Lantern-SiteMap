@@ -38,6 +38,7 @@ export const VPS: Vp[] = [
   { id: "vp-jonathan", name: "Jonathan Castro", title: "Vice President" },
   { id: "vp-andrea", name: "Andrea Dogostiano", title: "Vice President" },
   { id: "vp-portia", name: "Portia Linton-Blake", title: "Vice President" },
+  { id: "vp-sasha", name: "Sasha Callam", title: "Vice President" },
 ];
 
 export const VPS_BY_ID = new Map<VpId, Vp>(VPS.map((v) => [v.id, v]));
@@ -148,7 +149,8 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
 
-  // ── Jonathan Castro ─────────────────────────────────────────────────────
+  // ── Supportive housing. VP is per site; after the latest reassignments
+  //    each map cluster happens to sit under exactly one VP. ───────────────
   "savanna-hall": {
     vpIds: ["vp-jonathan"],
     staff: [
@@ -185,19 +187,18 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
 
-  // ── Andrea Dogostiano ───────────────────────────────────────────────────
   "cedar-hall": {
     vpIds: ["vp-andrea"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "schafer-hall": {
-    vpIds: ["vp-andrea"],
+    vpIds: ["vp-sasha"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "prospero-hall": {
-    vpIds: ["vp-andrea"],
+    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "James Fritts" },
       { role: "APD", name: "Phyllis Ferrara" },
@@ -212,7 +213,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "stardom-hall": {
-    vpIds: ["vp-andrea"],
+    vpIds: ["vp-portia"],
     staff: [{ role: "PD", name: "Cyril Jacobs" }],
   },
   "amber-hall": {
@@ -226,9 +227,8 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     staff: AMBER_LEEWARD,
   },
 
-  // ── Portia Linton-Blake ─────────────────────────────────────────────────
   "huntersmoon-hall": {
-    vpIds: ["vp-portia"],
+    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "Michelle Perez" },
       { role: "APD", name: "Samuel Asante" },
@@ -252,7 +252,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rustin-house": {
-    vpIds: ["vp-portia"],
+    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "John Lim" },
       { role: "APD", name: "Colette Garcia" },

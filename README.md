@@ -206,13 +206,19 @@ VP is assigned **per site**, not per cluster — the chart groups sites under a 
 directly, and those groupings match neither the map clusters nor the procurement
 clusters. All 21 sites are covered:
 
-| VP | Sites |
-| --- | --- |
-| Talisha Van Brackle — Shelter Services | 4 (the four shelters) |
-| Taiesha Zachary — Operations | the same 4 shelters |
-| Jonathan Castro | 5 |
-| Andrea Dogostiano | 7 |
-| Portia Linton-Blake | 5 |
+| VP | Map cluster | Sites |
+| --- | --- | --- |
+| Sasha Callam | Cluster 1 | 4 |
+| Portia Linton-Blake | Cluster 2 | 4 |
+| Andrea Dogostiano | Cluster 3 | 4 |
+| Jonathan Castro | Cluster 4 | 5 |
+| Talisha Van Brackle — Shelter Services | — | the 4 shelters |
+| Taiesha Zachary — Operations | — | the same 4 shelters |
+
+Every map cluster sits under **exactly one** VP, and each VP covers exactly one
+cluster. VP is still stored per site (that is how the chart is drawn and how the
+shelters get two VPs), so the invariant is a property of the data rather than
+something the types enforce — worth re-checking after any reassignment.
 
 A site can have more than one VP. The shelters answer to both Talisha Van Brackle
 (Shelter Services) and Taiesha Zachary (Operations), which is what the (TV) / (TZ)
