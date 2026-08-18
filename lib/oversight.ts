@@ -23,14 +23,14 @@ export type Vp = {
 
 export const VPS: Vp[] = [
   {
-    id: "vp-taiesha",
-    name: "Taiesha Zachary",
+    id: "vp-talisha",
+    name: "Talisha Van Brackle",
     title: "Vice President",
     department: "Shelter Services",
   },
   {
-    id: "vp-talisha",
-    name: "Talisha Van Brackle",
+    id: "vp-taiesha",
+    name: "Taiesha Zachary",
     title: "Vice President",
     department: "Operations",
   },
@@ -49,13 +49,16 @@ export const PROGRAM_LEADERSHIP = [
 
 export type StaffRole = "SPD" | "PD" | "APD" | "PA" | "DPO" | "DSS" | "Admin";
 
-/** Long forms for the tooltips/labels; the chart only gives the initials. */
+/**
+ * The chart only prints initials. PD is inferred from the SPD/APD family;
+ * DSS and Admin are still unexpanded, so they show as-is rather than guessed.
+ */
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
-  SPD: "SPD",
-  PD: "PD",
-  APD: "APD",
-  PA: "PA",
-  DPO: "DPO",
+  SPD: "Senior Program Director",
+  PD: "Program Director",
+  APD: "Assistant Program Director",
+  PA: "Program Assistant",
+  DPO: "Director of Program Operations",
   DSS: "DSS",
   Admin: "Admin",
 };
@@ -95,9 +98,12 @@ const AMBER_LEEWARD: StaffEntry[] = [
 ];
 
 export const SITE_TEAM: Record<string, SiteTeam> = {
-  // ── Taiesha Zachary — Shelter Services (the four shelters) ───────────────
+  // ── Talisha Van Brackle — Shelter Services ──────────────────────────────
+  // The four shelters, i.e. every site outside the supportive-housing cluster
+  // model. The (TZ) / (TV) notes on individual roles are verbatim from the
+  // chart and are left alone.
   "laurel-hall": {
-    vpId: "vp-taiesha",
+    vpId: "vp-talisha",
     staff: [
       { role: "PD", name: "Michael Wells", note: "TZ" },
       { role: "DPO", name: "Sheryl Lowe", note: "TV" },
@@ -106,7 +112,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "liberty-plaza": {
-    vpId: "vp-taiesha",
+    vpId: "vp-talisha",
     staff: [
       { role: "PD", name: "Shawna Scott" },
       { role: "DPO", name: "Adedeji Adewusi" },
@@ -116,7 +122,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   // The chart lists this one by its street, Stillwell Avenue.
   "hudson-bay": {
-    vpId: "vp-taiesha",
+    vpId: "vp-talisha",
     alsoKnownAs: "Stillwell Avenue",
     staff: [
       { role: "DPO", name: "Vacant" },
@@ -126,7 +132,7 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rockaway-terrace": {
-    vpId: "vp-taiesha",
+    vpId: "vp-talisha",
     staff: [
       { role: "DPO", name: "Shaquille Shepard" },
       { role: "DSS", name: "Shannon Pierre" },

@@ -2,7 +2,7 @@
 
 import { useCoverage } from "./CoverageProvider";
 import { coverageClusterName, type Person } from "@/lib/coverage";
-import type { StaffEntry } from "@/lib/oversight";
+import { STAFF_ROLE_LABELS, type StaffEntry } from "@/lib/oversight";
 
 /**
  * Everything assigned to a site: the VP over it, its program staff, and its
@@ -77,11 +77,15 @@ export default function CoverageCard({
             className={
               compact
                 ? "mt-2.5 space-y-1"
-                : "mt-3 grid gap-x-4 gap-y-1 sm:grid-cols-2"
+                : "mt-3 grid gap-x-4 gap-y-3 sm:grid-cols-2"
             }
           >
             {shown.map((entry, index) => (
-              <StaffRow key={`${entry.role}-${index}`} entry={entry} />
+              <StaffRow
+                key={`${entry.role}-${index}`}
+                entry={entry}
+                compact={compact}
+              />
             ))}
           </ul>
         )}
@@ -122,19 +126,45 @@ export default function CoverageCard({
   );
 }
 
-function StaffRow({ entry }: { entry: StaffEntry }) {
+function StaffRow({ entry, compact }: { entry: StaffEntry; compact: boolean }) {
   const vacant = entry.name === "Vacant";
+  const fullRole = STAFF_ROLE_LABELS[entry.role];
+  const name = (
+    <>
+      {entry.name}
+      {entry.note && <span className="text-ink-faint"> ({entry.note})</span>}
+    </>
+  );
+
+  // Compact keeps the initials — the sheet has no room for full titles.
+  if (compact) {
+    return (
+      <li className="flex items-baseline gap-2">
+        <span
+          title={fullRole}
+          className="w-10 shrink-0 font-mono text-[10px] tracking-[0.08em] uppercase text-ink-faint"
+        >
+          {entry.role}
+        </span>
+        <span
+          className={`min-w-0 flex-1 truncate text-[13px] ${vacant ? "text-ink-faint italic" : "text-ink"}`}
+        >
+          {name}
+        </span>
+      </li>
+    );
+  }
+
   return (
-    <li className="flex items-baseline gap-2">
-      <span className="w-10 shrink-0 font-mono text-[10px] tracking-[0.08em] uppercase text-ink-faint">
-        {entry.role}
-      </span>
-      <span
-        className={`min-w-0 flex-1 truncate text-[13px] ${vacant ? "text-ink-faint italic" : "text-ink"}`}
+    <li className="min-w-0">
+      <p className="font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
+        {fullRole}
+      </p>
+      <p
+        className={`truncate text-sm ${vacant ? "text-ink-faint italic" : "text-ink"}`}
       >
-        {entry.name}
-        {entry.note && <span className="text-ink-faint"> ({entry.note})</span>}
-      </span>
+        {name}
+      </p>
     </li>
   );
 }

@@ -207,11 +207,20 @@ clusters. All 21 sites are covered:
 
 | VP | Sites |
 | --- | --- |
-| Taiesha Zachary — Shelter Services | 4 (exactly the four shelters) |
-| Talisha Van Brackle — Operations | 0 |
+| Talisha Van Brackle — Shelter Services | 4 (exactly the four shelters) |
+| Taiesha Zachary — Operations | 0 |
 | Jonathan Castro | 5 |
 | Andrea Dogostiano | 7 |
 | Portia Linton-Blake | 5 |
+
+Talisha covers the shelter sites, which are precisely the sites outside the
+supportive-housing cluster model (`cluster: null`). A test asserts that her
+portfolio and that set stay identical.
+
+Role initials are expanded in the in-depth view: SPD Senior Program Director,
+PD Program Director, APD Assistant Program Director, PA Program Assistant,
+DPO Director of Program Operations. DSS and Admin are still shown as initials
+because nobody has expanded them yet.
 
 Three rosters are shared across two buildings each (Cedar/Schafer,
 Lindenguild/Silverleaf, Amber/Leeward). Those sites show a "Program" field naming
