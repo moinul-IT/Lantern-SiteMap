@@ -11,14 +11,15 @@ import {
   type Person,
 } from "@/lib/coverage";
 import {
-  SITE_TEAM,
   contractForSite,
   teamForSite,
   vpById,
+  vpIdsForSite,
   type SiteTeam,
   type Vp,
   type VpId,
 } from "@/lib/oversight";
+import { SITES } from "@/lib/sites";
 
 /**
  * Single place every site reads its oversight and procurement coverage from.
@@ -27,6 +28,9 @@ import {
  * in-memory state that vanishes on refresh — worse than not offering it, because
  * it looks like the change was saved. Assignments change by editing
  * `lib/oversight.ts` and `lib/coverage.ts`, which are the record of the org chart.
+ *
+ * VPs come from the cluster (`CLUSTER_VPS`), procurement from the procurement
+ * cluster, and program staff plus Grant Analyst from the site itself.
  *
  * This stays the seam for a future backend: swap the two sources below for fetched
  * data, add mutators here, and no consumer has to change.
@@ -51,8 +55,9 @@ export type SiteCoverage = {
   contract: "DOHMH" | "HASA" | null;
 };
 
+/** Derived from the cluster assignments, so it cannot disagree with them. */
 const SITE_VPS: Record<string, VpId[]> = Object.fromEntries(
-  Object.entries(SITE_TEAM).map(([siteId, team]) => [siteId, team.vpIds]),
+  SITES.map((site) => [site.id, vpIdsForSite(site.id)]),
 );
 
 const CoverageContext = createContext<CoverageContextValue | null>(null);

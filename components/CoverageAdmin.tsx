@@ -9,8 +9,20 @@ import {
   personById,
   siteIdsInCoverageCluster,
 } from "@/lib/coverage";
-import { PROGRAM_LEADERSHIP, VPS } from "@/lib/oversight";
-import { SITES, SITES_BY_ID } from "@/lib/sites";
+import {
+  CLUSTER_VPS,
+  PROGRAM_LEADERSHIP,
+  SHELTER_VPS,
+  vpById,
+} from "@/lib/oversight";
+import {
+  CLUSTERS,
+  CLUSTER_COLORS,
+  SHELTER_COLORS,
+  SITES,
+  SITES_BY_ID,
+  clusterLabel,
+} from "@/lib/sites";
 
 const EASE = [0.22, 0.61, 0.36, 1] as const;
 
@@ -25,14 +37,35 @@ export default function CoverageAdmin({
 }: {
   onOpenSite: (siteId: string) => void;
 }) {
-  const { assignments, siteVps } = useCoverage();
+  const { assignments } = useCoverage();
 
-  const portfolios = VPS.map((vp) => ({
-    vp,
-    siteIds: SITES.filter((s) => (siteVps[s.id] ?? []).includes(vp.id)).map(
-      (s) => s.id,
-    ),
-  }));
+  /**
+   * One card per cluster, because the cluster is the unit a VP is assigned to.
+   * The shelters are the one group outside the cluster model, and the only one
+   * with more than one VP.
+   */
+  const groups = [
+    ...CLUSTERS.map((cluster) => ({
+      key: `cluster-${cluster}`,
+      title: clusterLabel(cluster),
+      color: CLUSTER_COLORS[cluster].base,
+      squared: true,
+      vps: [vpById(CLUSTER_VPS[cluster])].filter(
+        (v): v is NonNullable<typeof v> => v !== null,
+      ),
+      siteIds: SITES.filter((s) => s.cluster === cluster).map((s) => s.id),
+    })),
+    {
+      key: "shelters",
+      title: "Shelters",
+      color: SHELTER_COLORS.base,
+      squared: false,
+      vps: SHELTER_VPS.map((id) => vpById(id)).filter(
+        (v): v is NonNullable<typeof v> => v !== null,
+      ),
+      siteIds: SITES.filter((s) => s.cluster === null).map((s) => s.id),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col gap-5">
@@ -55,9 +88,9 @@ export default function CoverageAdmin({
       </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {portfolios.map((portfolio, index) => (
+        {groups.map((group, index) => (
           <motion.section
-            key={portfolio.vp.id}
+            key={group.key}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{
@@ -69,53 +102,61 @@ export default function CoverageAdmin({
           >
             <header className="border-b border-hairline px-5 py-4">
               <div className="flex items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className={`size-2.5 shrink-0 ${group.squared ? "rounded-[3px]" : "rounded-full"}`}
+                  style={{ background: group.color }}
+                />
                 <h2 className="flex-1 font-display text-lg leading-none font-normal text-ink">
-                  {portfolio.vp.name}
+                  {group.title}
                 </h2>
                 <span className="font-mono text-[11px] text-ink-faint tabular-nums">
-                  {String(portfolio.siteIds.length).padStart(2, "0")}
+                  {String(group.siteIds.length).padStart(2, "0")}
                 </span>
               </div>
               <p className="mt-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
-                {portfolio.vp.department
-                  ? `${portfolio.vp.title} · ${portfolio.vp.department}`
-                  : portfolio.vp.title}
+                {group.vps.length > 1 ? "Vice Presidents" : "Vice President"}
               </p>
             </header>
 
             <div className="px-5 py-4">
-              {portfolio.siteIds.length === 0 ? (
-                <p className="text-[13px] text-ink-faint">No sites assigned.</p>
+              {group.vps.length === 0 ? (
+                <p className="text-sm text-ink-faint">Unassigned</p>
               ) : (
-                <ul className="divide-y divide-hairline border-t border-hairline">
-                  {portfolio.siteIds.map((siteId) => {
-                    const site = SITES_BY_ID.get(siteId);
-                    if (!site) return null;
-                    const alsoUnder = (siteVps[siteId] ?? [])
-                      .filter((id) => id !== portfolio.vp.id)
-                      .map((id) => VPS.find((v) => v.id === id)?.name)
-                      .filter(Boolean);
-                    return (
-                      <li key={siteId}>
-                        <button
-                          type="button"
-                          onClick={() => onOpenSite(siteId)}
-                          className="flex min-h-11 w-full flex-col justify-center py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
-                        >
-                          <span className="block truncate text-[13px] text-ink">
-                            {site.name}
-                          </span>
-                          {alsoUnder.length > 0 && (
-                            <span className="block truncate font-mono text-[10px] text-ink-faint">
-                              also {alsoUnder.join(", ")}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                group.vps.map((vp) => (
+                  <div key={vp.id} className="mb-2 last:mb-0">
+                    <p className="truncate text-sm font-medium text-ink">
+                      {vp.name}
+                    </p>
+                    <p className="truncate text-[13px] text-ink-soft">
+                      {vp.department
+                        ? `${vp.title} · ${vp.department}`
+                        : vp.title}
+                    </p>
+                  </div>
+                ))
               )}
+
+              <p className="eyebrow mt-4 block">Sites inheriting this</p>
+              <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
+                {group.siteIds.map((siteId) => {
+                  const site = SITES_BY_ID.get(siteId);
+                  if (!site) return null;
+                  return (
+                    <li key={siteId}>
+                      <button
+                        type="button"
+                        onClick={() => onOpenSite(siteId)}
+                        className="flex min-h-11 w-full items-center py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
+                      >
+                        <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                          {site.name}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </motion.section>
         ))}

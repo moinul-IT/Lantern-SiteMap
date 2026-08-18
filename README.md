@@ -202,9 +202,10 @@ not represented anywhere in the app.
 From the "Vice President / Building Oversight" chart. Each site shows the VP over
 it and its program staff roster; `lib/oversight.ts` holds the transcription.
 
-VP is assigned **per site**, not per cluster — the chart groups sites under a VP
-directly, and those groupings match neither the map clusters nor the procurement
-clusters. All 21 sites are covered:
+VP is assigned **per map cluster**. `CLUSTER_VPS` maps each cluster to a single
+`VpId`, so a cluster cannot hold two VPs — that is a type error, not something to
+police by hand. Sites inherit their cluster's VP, so reassigning moves the whole
+cluster at once and per-site drift is impossible.
 
 | VP | Map cluster | Sites |
 | --- | --- | --- |
@@ -215,10 +216,11 @@ clusters. All 21 sites are covered:
 | Talisha Van Brackle — Shelter Services | — | the 4 shelters |
 | Taiesha Zachary — Operations | — | the same 4 shelters |
 
-Every map cluster sits under **exactly one** VP, and each VP covers exactly one
-cluster. VP is still stored per site (that is how the chart is drawn and how the
-shelters get two VPs), so the invariant is a property of the data rather than
-something the types enforce — worth re-checking after any reassignment.
+The four shelters sit outside the cluster model (`cluster: null`) and are the one
+group with two VPs, via `SHELTER_VPS`.
+
+Program staff and the Grant Analyst stay **per site** — both genuinely vary inside
+a cluster, so neither can be folded into the cluster assignment.
 
 A site can have more than one VP. The shelters answer to both Talisha Van Brackle
 (Shelter Services) and Taiesha Zachary (Operations), which is what the (TV) / (TZ)

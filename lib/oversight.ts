@@ -2,15 +2,22 @@
  * Building oversight — the VP over each site and that site's program staff,
  * transcribed from the "Vice President / Building Oversight" org chart.
  *
- * VP is assigned per site here, not per cluster: the chart groups sites under a
- * VP directly, and those groupings do not line up with either the map clusters
- * or the procurement clusters. All 21 sites are covered, and a site may have
- * more than one VP.
+ * VP is assigned PER MAP CLUSTER — one VP each, and `CLUSTER_VPS` is typed so a
+ * cluster cannot hold two. Sites inherit their cluster's VP, so a reassignment
+ * moves the whole cluster at once and the assignment cannot drift site by site.
+ *
+ * The four shelters sit outside the cluster model (`cluster: null`) and answer to
+ * both shelter VPs, which is the one case that needs more than one.
+ *
+ * Program staff and the Grant Analyst stay per site — they genuinely vary within
+ * a cluster.
  *
  * Several sites share one staff roster (Cedar/Schafer, Lindenguild/Silverleaf,
  * Amber/Leeward). Those carry a `groupLabel` and the same staff list, with the
  * chart's per-building notes preserved on the individual roles.
  */
+
+import { SITES_BY_ID, type ClusterId } from "./sites";
 
 export type VpId = string;
 
@@ -73,12 +80,6 @@ export type StaffEntry = {
 };
 
 export type SiteTeam = {
-  /**
-   * A site can sit under more than one VP: the shelters answer to both the VP of
-   * Shelter Services and the VP of Operations, which is what the (TV) / (TZ)
-   * notes on their individual roles reflect.
-   */
-  vpIds: VpId[];
   /** Set only when one roster genuinely covers more than one building. */
   groupLabel?: string;
   /** The chart's own name for the building, where it differs from ours. */
@@ -105,13 +106,11 @@ const AMBER_LEEWARD: StaffEntry[] = [
 ];
 
 export const SITE_TEAM: Record<string, SiteTeam> = {
-  // ── Shelters: Talisha Van Brackle (Shelter Services) + Taiesha Zachary
-  //    (Operations) both oversee these four ─────────────────────────────────
+  // ── Shelters ────────────────────────────────────────────────────────────
   // The four shelters, i.e. every site outside the supportive-housing cluster
   // model. The (TZ) / (TV) notes on individual roles are verbatim from the
   // chart and are left alone.
   "laurel-hall": {
-    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "PD", name: "Michael Wells", note: "TZ" },
       { role: "DPO", name: "Sheryl Lowe", note: "TV" },
@@ -120,7 +119,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "liberty-plaza": {
-    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "PD", name: "Shawna Scott" },
       { role: "DPO", name: "Adedeji Adewusi" },
@@ -130,7 +128,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   // The chart lists this one by its street, Stillwell Avenue.
   "hudson-bay": {
-    vpIds: ["vp-talisha", "vp-taiesha"],
     alsoKnownAs: "Stillwell Avenue",
     staff: [
       { role: "DPO", name: "Vacant" },
@@ -140,7 +137,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rockaway-terrace": {
-    vpIds: ["vp-talisha", "vp-taiesha"],
     staff: [
       { role: "DPO", name: "Shaquille Shepard" },
       { role: "DSS", name: "Shannon Pierre" },
@@ -149,10 +145,8 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
 
-  // ── Supportive housing. VP is per site; after the latest reassignments
-  //    each map cluster happens to sit under exactly one VP. ───────────────
+  // ── Supportive housing ──────────────────────────────────────────────────
   "savanna-hall": {
-    vpIds: ["vp-jonathan"],
     staff: [
       { role: "SPD", name: "Yolanda Jones" },
       { role: "PD", name: "Vacant" },
@@ -161,17 +155,14 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "lindenguild-hall": {
-    vpIds: ["vp-jonathan"],
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
     staff: LINDENGUILD_SILVERLEAF,
   },
   "silverleaf-hall": {
-    vpIds: ["vp-jonathan"],
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
     staff: LINDENGUILD_SILVERLEAF,
   },
   "vicinitas-hall": {
-    vpIds: ["vp-jonathan"],
     staff: [
       { role: "PD", name: "KC Hunt" },
       { role: "APD", name: "Jazmyne Nichols" },
@@ -179,7 +170,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "audubon-hall": {
-    vpIds: ["vp-jonathan"],
     staff: [
       { role: "PD", name: "Carlos Castro" },
       { role: "APD", name: "Ashley Warren" },
@@ -188,24 +178,20 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
 
   "cedar-hall": {
-    vpIds: ["vp-andrea"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "schafer-hall": {
-    vpIds: ["vp-sasha"],
     groupLabel: "Cedar Hall / Schafer Hall",
     staff: CEDAR_SCHAFER,
   },
   "prospero-hall": {
-    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "James Fritts" },
       { role: "APD", name: "Phyllis Ferrara" },
     ],
   },
   "jasper-hall": {
-    vpIds: ["vp-andrea"],
     staff: [
       { role: "PD", name: "Tamika Coates" },
       { role: "APD", name: "Vacant" },
@@ -213,22 +199,18 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "stardom-hall": {
-    vpIds: ["vp-portia"],
     staff: [{ role: "PD", name: "Cyril Jacobs" }],
   },
   "amber-hall": {
-    vpIds: ["vp-andrea"],
     groupLabel: "Amber Hall / Leeward Hall",
     staff: AMBER_LEEWARD,
   },
   "leeward-hall": {
-    vpIds: ["vp-andrea"],
     groupLabel: "Amber Hall / Leeward Hall",
     staff: AMBER_LEEWARD,
   },
 
   "huntersmoon-hall": {
-    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "Michelle Perez" },
       { role: "APD", name: "Samuel Asante" },
@@ -236,7 +218,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "euclid-glenmore": {
-    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Ebonie Mickens" },
       { role: "APD", name: "Vacant" },
@@ -244,7 +225,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "clover-hall": {
-    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Niesha Sergeant" },
       { role: "APD", name: "Eugene Brown" },
@@ -252,7 +232,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "rustin-house": {
-    vpIds: ["vp-sasha"],
     staff: [
       { role: "PD", name: "John Lim" },
       { role: "APD", name: "Colette Garcia" },
@@ -260,7 +239,6 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     ],
   },
   "hunterfly-trace": {
-    vpIds: ["vp-portia"],
     staff: [
       { role: "PD", name: "Paul Amoah" },
       { role: "PA", name: "Rubin Tejada" },
@@ -298,9 +276,30 @@ export function contractForSite(siteId: string) {
   return SITE_CONTRACT[siteId] ?? null;
 }
 
-/** Sites a VP currently oversees, per the seed data. */
+/**
+ * One VP per map cluster. The value is a single VpId, not a list, so a second VP
+ * on a cluster is a type error rather than something to police by hand.
+ */
+export const CLUSTER_VPS: Record<ClusterId, VpId> = {
+  1: "vp-sasha",
+  2: "vp-portia",
+  3: "vp-andrea",
+  4: "vp-jonathan",
+};
+
+/** The shelters are outside the cluster model and answer to both of these. */
+export const SHELTER_VPS: VpId[] = ["vp-talisha", "vp-taiesha"];
+
+/** A site's VPs, inherited from its cluster. */
+export function vpIdsForSite(siteId: string): VpId[] {
+  const site = SITES_BY_ID.get(siteId);
+  if (!site) return [];
+  return site.cluster ? [CLUSTER_VPS[site.cluster]] : [...SHELTER_VPS];
+}
+
+/** Sites a VP oversees, derived from the cluster assignments above. */
 export function siteIdsForVp(id: VpId): string[] {
-  return Object.entries(SITE_TEAM)
-    .filter(([, team]) => team.vpIds.includes(id))
-    .map(([siteId]) => siteId);
+  return [...SITES_BY_ID.values()]
+    .filter((site) => vpIdsForSite(site.id).includes(id))
+    .map((site) => site.id);
 }
