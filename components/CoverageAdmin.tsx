@@ -5,54 +5,38 @@ import { useCoverage } from "./CoverageProvider";
 import {
   COVERAGE_CLUSTERS,
   PROCUREMENT_LEADERSHIP,
-  PROCUREMENT_PEOPLE,
   grantAnalystFor,
   personById,
   siteIdsInCoverageCluster,
-  type Person,
-  type PersonId,
 } from "@/lib/coverage";
 import { PROGRAM_LEADERSHIP, VPS } from "@/lib/oversight";
 import { SITES, SITES_BY_ID } from "@/lib/sites";
 
 const EASE = [0.22, 0.61, 0.36, 1] as const;
 
+/**
+ * Read-only reference for who covers what. There is no backend, so there are no
+ * controls here — an editor could only change in-memory state that resets on
+ * refresh, which reads as "saved" when nothing was. Assignments live in
+ * `lib/oversight.ts` and `lib/coverage.ts`.
+ */
 export default function CoverageAdmin({
   onOpenSite,
 }: {
   onOpenSite: (siteId: string) => void;
 }) {
-  const {
-    assignments,
-    setProcurement,
-    clearCluster,
-    siteVps,
-    addVpToSite,
-    removeVpFromSite,
-    reassignVpPortfolio,
-  } = useCoverage();
+  const { assignments, siteVps } = useCoverage();
 
-  // Grouped from live state, so an edit moves the site between cards. A site may
-  // appear under more than one VP — the shelters answer to two.
   const portfolios = VPS.map((vp) => ({
     vp,
     siteIds: SITES.filter((s) => (siteVps[s.id] ?? []).includes(vp.id)).map(
       (s) => s.id,
     ),
   }));
-  const unassigned = SITES.filter(
-    (s) => (siteVps[s.id] ?? []).length === 0,
-  ).map((s) => s.id);
 
   return (
     <div className="flex flex-1 flex-col gap-5">
-      {/* ── Building oversight ─────────────────────────────────────────── */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.34, ease: EASE }}
-        className="rounded-2xl border border-hairline bg-paper p-5 shadow-float"
-      >
+      <Card delay={0}>
         <p className="eyebrow">Program leadership</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
           {PROGRAM_LEADERSHIP.map((person) => (
@@ -68,7 +52,7 @@ export default function CoverageAdmin({
             </li>
           ))}
         </ul>
-      </motion.section>
+      </Card>
 
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {portfolios.map((portfolio, index) => (
@@ -99,7 +83,7 @@ export default function CoverageAdmin({
               </p>
             </header>
 
-            <div className="flex flex-1 flex-col gap-3 px-5 py-4">
+            <div className="px-5 py-4">
               {portfolio.siteIds.length === 0 ? (
                 <p className="text-[13px] text-ink-faint">No sites assigned.</p>
               ) : (
@@ -112,14 +96,11 @@ export default function CoverageAdmin({
                       .map((id) => VPS.find((v) => v.id === id)?.name)
                       .filter(Boolean);
                     return (
-                      <li
-                        key={siteId}
-                        className="flex min-h-11 items-center gap-2 py-2"
-                      >
+                      <li key={siteId}>
                         <button
                           type="button"
                           onClick={() => onOpenSite(siteId)}
-                          className="min-w-0 flex-1 text-left transition-colors duration-200 hover:text-ink-soft focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40"
+                          className="flex min-h-11 w-full flex-col justify-center py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
                         >
                           <span className="block truncate text-[13px] text-ink">
                             {site.name}
@@ -130,138 +111,17 @@ export default function CoverageAdmin({
                             </span>
                           )}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeVpFromSite(siteId, portfolio.vp.id)
-                          }
-                          aria-label={`Remove ${site.name} from ${portfolio.vp.name}`}
-                          className="flex size-8 shrink-0 items-center justify-center rounded-full text-ink-faint transition-colors duration-200 hover:bg-cream-deep hover:text-ink"
-                        >
-                          <svg
-                            viewBox="0 0 16 16"
-                            className="size-3"
-                            aria-hidden="true"
-                          >
-                            <path
-                              d="M3.5 3.5l9 9m0-9l-9 9"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              strokeLinecap="round"
-                              fill="none"
-                            />
-                          </svg>
-                        </button>
                       </li>
                     );
                   })}
                 </ul>
               )}
-
-              <label className="block">
-                <span className="eyebrow">Add a site</span>
-                <span className="mt-1.5 flex h-11 items-center rounded-xl border border-hairline bg-cream/60 px-3">
-                  <select
-                    value=""
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        addVpToSite(event.target.value, portfolio.vp.id);
-                      }
-                    }}
-                    className="w-full bg-transparent text-base text-ink focus:outline-none md:text-sm"
-                  >
-                    <option value="">Choose a site…</option>
-                    {SITES.filter(
-                      (s) => !(siteVps[s.id] ?? []).includes(portfolio.vp.id),
-                    ).map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-              </label>
-
-              <label className="mt-auto block">
-                <span className="eyebrow">Hand whole portfolio to</span>
-                <span className="mt-1.5 flex h-11 items-center rounded-xl border border-hairline bg-cream/60 px-3">
-                  <select
-                    value=""
-                    disabled={portfolio.siteIds.length === 0}
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        reassignVpPortfolio(
-                          portfolio.vp.id,
-                          event.target.value,
-                        );
-                      }
-                    }}
-                    className="w-full bg-transparent text-base text-ink focus:outline-none disabled:opacity-40 md:text-sm"
-                  >
-                    <option value="">Choose a VP…</option>
-                    {VPS.filter((v) => v.id !== portfolio.vp.id).map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
-                </span>
-              </label>
             </div>
           </motion.section>
         ))}
       </div>
 
-      {unassigned.length > 0 && (
-        <section className="rounded-2xl border border-hairline bg-paper p-5 shadow-float">
-          <p className="eyebrow">Sites with no VP</p>
-          <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
-            {unassigned.map((siteId) => {
-              const site = SITES_BY_ID.get(siteId);
-              if (!site) return null;
-              return (
-                <li
-                  key={siteId}
-                  className="flex min-h-11 items-center gap-2 py-2"
-                >
-                  <button
-                    type="button"
-                    onClick={() => onOpenSite(siteId)}
-                    className="min-w-0 flex-1 truncate text-left text-[13px] text-ink transition-colors duration-200 hover:text-ink-soft"
-                  >
-                    {site.name}
-                  </button>
-                  <select
-                    aria-label={`Assign a VP to ${site.name}`}
-                    value=""
-                    onChange={(event) => {
-                      if (event.target.value) {
-                        addVpToSite(siteId, event.target.value);
-                      }
-                    }}
-                    className="max-w-[9rem] shrink-0 rounded-lg border border-hairline bg-cream/60 px-1.5 py-1 text-base text-ink-soft focus:outline-none md:text-[12px]"
-                  >
-                    <option value="">Assign VP…</option>
-                    {VPS.map((v) => (
-                      <option key={v.id} value={v.id}>
-                        {v.name}
-                      </option>
-                    ))}
-                  </select>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* ── Procurement coverage ───────────────────────────────────────── */}
-      <motion.section
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.34, delay: 0.08, ease: EASE }}
-        className="rounded-2xl border border-hairline bg-paper p-5 shadow-float"
-      >
+      <Card delay={0.08}>
         <p className="eyebrow">Procurement leadership</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-3">
           {PROCUREMENT_LEADERSHIP.map((id) => {
@@ -279,11 +139,11 @@ export default function CoverageAdmin({
             );
           })}
         </ul>
-      </motion.section>
+      </Card>
 
       <div className="grid gap-5 xl:grid-cols-3">
         {COVERAGE_CLUSTERS.map((cluster, index) => {
-          const assignment = assignments[cluster.id];
+          const person = personById(assignments[cluster.id].procurementId);
           const siteIds = siteIdsInCoverageCluster(cluster.id);
 
           return (
@@ -298,59 +158,50 @@ export default function CoverageAdmin({
               }}
               className="flex flex-col overflow-hidden rounded-2xl border border-hairline bg-paper shadow-float"
             >
-              <header className="flex items-center gap-2.5 border-b border-hairline px-5 py-4">
-                <h2 className="flex-1 font-display text-lg leading-none font-normal text-ink">
-                  {cluster.name}
-                </h2>
-                <span className="font-mono text-[11px] text-ink-faint tabular-nums">
-                  {String(siteIds.length).padStart(2, "0")} sites
-                </span>
+              <header className="border-b border-hairline px-5 py-4">
+                <div className="flex items-center gap-2.5">
+                  <h2 className="flex-1 font-display text-lg leading-none font-normal text-ink">
+                    {cluster.name}
+                  </h2>
+                  <span className="font-mono text-[11px] text-ink-faint tabular-nums">
+                    {String(siteIds.length).padStart(2, "0")}
+                  </span>
+                </div>
+                <p className="mt-1.5 font-mono text-[10px] tracking-[0.1em] uppercase text-ink-faint">
+                  {person ? person.title : "Unassigned"}
+                </p>
               </header>
 
-              <div className="flex flex-1 flex-col gap-4 px-5 py-4">
-                <PersonPicker
-                  label="Procurement Team Member"
-                  people={PROCUREMENT_PEOPLE}
-                  value={assignment.procurementId}
-                  onChange={(id) => setProcurement(cluster.id, id)}
-                />
+              <div className="px-5 py-4">
+                <p className="text-sm font-medium text-ink">
+                  {person ? person.name : "Unassigned"}
+                </p>
 
-                <div>
-                  <p className="eyebrow">Sites inheriting this</p>
-                  {/* Grant Analyst is per site, not per cluster, so it is shown
-                      on each row rather than as a cluster-level field. */}
-                  <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
-                    {siteIds.map((siteId) => {
-                      const site = SITES_BY_ID.get(siteId);
-                      if (!site) return null;
-                      return (
-                        <li key={siteId}>
-                          <button
-                            type="button"
-                            onClick={() => onOpenSite(siteId)}
-                            className="flex min-h-11 w-full items-center gap-3 py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
-                          >
-                            <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
-                              {site.name}
-                            </span>
-                            <span className="shrink-0 font-mono text-[11px] text-ink-faint">
-                              GA {grantAnalystFor(siteId) ?? "—"}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => clearCluster(cluster.id)}
-                  disabled={assignment.procurementId === null}
-                  className="mt-auto min-h-11 self-start rounded-xl border border-hairline px-3.5 py-2 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep disabled:cursor-not-allowed disabled:opacity-40 md:min-h-0"
-                >
-                  Remove assignment
-                </button>
+                <p className="eyebrow mt-4 block">Sites inheriting this</p>
+                {/* Grant Analyst is per site, not per cluster, so it sits on the
+                    row rather than as a cluster-level field. */}
+                <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
+                  {siteIds.map((siteId) => {
+                    const site = SITES_BY_ID.get(siteId);
+                    if (!site) return null;
+                    return (
+                      <li key={siteId}>
+                        <button
+                          type="button"
+                          onClick={() => onOpenSite(siteId)}
+                          className="flex min-h-11 w-full items-center gap-3 py-2 text-left transition-colors duration-200 hover:bg-cream active:bg-cream-deep focus-visible:-outline-offset-2 focus-visible:outline-2 focus-visible:outline-ink/40 md:min-h-0"
+                        >
+                          <span className="min-w-0 flex-1 truncate text-[13px] text-ink">
+                            {site.name}
+                          </span>
+                          <span className="shrink-0 font-mono text-[11px] text-ink-faint">
+                            GA {grantAnalystFor(siteId) ?? "—"}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
             </motion.section>
           );
@@ -360,39 +211,21 @@ export default function CoverageAdmin({
   );
 }
 
-function PersonPicker({
-  label,
-  people,
-  value,
-  onChange,
+function Card({
+  delay,
+  children,
 }: {
-  label: string;
-  people: Person[];
-  value: PersonId | null;
-  onChange: (id: PersonId | null) => void;
+  delay: number;
+  children: React.ReactNode;
 }) {
-  const selected = personById(value);
-
   return (
-    <label className="block">
-      <span className="eyebrow">{label}</span>
-      <span className="mt-1.5 flex h-11 items-center rounded-xl border border-hairline bg-cream/60 px-3">
-        <select
-          value={value ?? ""}
-          onChange={(event) => onChange(event.target.value || null)}
-          className="w-full bg-transparent text-base text-ink focus:outline-none md:text-sm"
-        >
-          <option value="">Unassigned</option>
-          {people.map((person) => (
-            <option key={person.id} value={person.id}>
-              {person.name} — {person.title}
-            </option>
-          ))}
-        </select>
-      </span>
-      <span className="mt-1 block truncate text-[13px] text-ink-soft">
-        {selected ? selected.title : "No one assigned yet"}
-      </span>
-    </label>
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.34, delay, ease: EASE }}
+      className="rounded-2xl border border-hairline bg-paper p-5 shadow-float"
+    >
+      {children}
+    </motion.section>
   );
 }

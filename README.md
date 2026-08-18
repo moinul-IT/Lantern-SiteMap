@@ -181,15 +181,16 @@ not represented anywhere in the app.
 
 - `lib/coverage.ts` — people, the three procurement clusters, site→cluster
   mapping, per-site Grant Analyst, and pure lookups.
-- `components/CoverageProvider.tsx` — the only mutable state. **This is the
-  backend seam:** replace the `useState(SEED_ASSIGNMENTS)` seed with fetched data
-  and point the mutators at your API. Nothing else changes.
+- `components/CoverageProvider.tsx` — the single place sites read coverage from,
+  and **read-only on purpose**: with no backend, an editor could only change
+  in-memory state that resets on refresh, which reads as "saved" when nothing was.
+  Assignments change by editing the data files. **This is the backend seam:** swap
+  the sources for fetched data, add mutators here, and no consumer changes.
 - `components/CoverageCard.tsx` — shown on the map panel (compact) and the
   in-depth view. Renders "Unassigned" when nobody is set, and nothing at all for
   places outside the org chart (the admin office).
-- `components/CoverageAdmin.tsx` — the **Coverage** view: leadership, then one
-  card per cluster with its Procurement picker, the sites inheriting it with each
-  site's GA, and a remove action.
+- `components/CoverageAdmin.tsx` — the **Coverage** view, read-only: leadership,
+  a card per VP, then a card per cluster with its member and each site's GA.
 
 > **Procurement clusters are not the map clusters.** The procurement chart groups
 > all 21 sites (shelters included) into three clusters of seven; the map clusters
@@ -218,9 +219,10 @@ A site can have more than one VP. The shelters answer to both Talisha Van Brackl
 notes on their individual roles reflect. Those four are precisely the sites
 outside the supportive-housing cluster model (`cluster: null`).
 
-The site views label the field "Vice Presidents" when there is more than one. In
-the Coverage view each VP card lists its sites, notes any other VP also covering
-them, and offers add / remove per site plus a whole-portfolio hand-over.
+The site views label the field "Vice Presidents" when there is more than one. The
+Coverage view is a read-only reference: program leadership, one card per VP with
+its sites, then procurement leadership and the three clusters with their member
+and each site's GA.
 
 Role initials are expanded in the in-depth view: SPD Senior Program Director,
 PD Program Director, APD Assistant Program Director, PA Program Assistant,

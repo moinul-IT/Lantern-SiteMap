@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 import {
   SEED_ASSIGNMENTS,
   coverageClusterFor,
@@ -16,7 +9,6 @@ import {
   type Assignment,
   type CoverageClusterId,
   type Person,
-  type PersonId,
 } from "@/lib/coverage";
 import {
   SITE_TEAM,
@@ -29,27 +21,21 @@ import {
 } from "@/lib/oversight";
 
 /**
- * Single source of truth for who covers which procurement cluster. Every site
- * reads through here, so changing a cluster's Procurement member updates every
- * site in that cluster in the same render — there is no per-site copy to sync.
+ * Single place every site reads its oversight and procurement coverage from.
  *
- * Backend swap: replace the `useState` seed with fetched data and make the
- * mutators call the API (optimistically, or refetch). Consumers stay unchanged.
+ * Deliberately READ-ONLY. There is no backend, so an editing UI could only mutate
+ * in-memory state that vanishes on refresh — worse than not offering it, because
+ * it looks like the change was saved. Assignments change by editing
+ * `lib/oversight.ts` and `lib/coverage.ts`, which are the record of the org chart.
+ *
+ * This stays the seam for a future backend: swap the two sources below for fetched
+ * data, add mutators here, and no consumer has to change.
  */
 
 type CoverageContextValue = {
   assignments: Record<CoverageClusterId, Assignment>;
-  setProcurement: (
-    cluster: CoverageClusterId,
-    personId: PersonId | null,
-  ) => void;
-  clearCluster: (cluster: CoverageClusterId) => void;
-  /** Site id → its VPs. A site may have several; seeded from the chart. */
+  /** Site id → its VPs. A site may have several. */
   siteVps: Record<string, VpId[]>;
-  addVpToSite: (siteId: string, vpId: VpId) => void;
-  removeVpFromSite: (siteId: string, vpId: VpId) => void;
-  /** Moves every site under `from` to `to`, without creating duplicates. */
-  reassignVpPortfolio: (from: VpId, to: VpId) => void;
   /** Resolved oversight + coverage for one site. */
   coverageForSite: (siteId: string) => SiteCoverage;
 };
@@ -65,9 +51,8 @@ export type SiteCoverage = {
   contract: "DOHMH" | "HASA" | null;
 };
 
-/** Seed: the VPs each site sits under on the oversight chart. */
-const SEED_SITE_VPS: Record<string, VpId[]> = Object.fromEntries(
-  Object.entries(SITE_TEAM).map(([siteId, team]) => [siteId, [...team.vpIds]]),
+const SITE_VPS: Record<string, VpId[]> = Object.fromEntries(
+  Object.entries(SITE_TEAM).map(([siteId, team]) => [siteId, team.vpIds]),
 );
 
 const CoverageContext = createContext<CoverageContextValue | null>(null);
@@ -77,66 +62,17 @@ export default function CoverageProvider({
 }: {
   children: ReactNode;
 }) {
-  const [assignments, setAssignments] =
-    useState<Record<CoverageClusterId, Assignment>>(SEED_ASSIGNMENTS);
-  const [siteVps, setSiteVps] = useState<Record<string, VpId[]>>(SEED_SITE_VPS);
-
-  const addVpToSite = useCallback((siteId: string, vpId: VpId) => {
-    setSiteVps((current) => {
-      const existing = current[siteId] ?? [];
-      if (existing.includes(vpId)) return current;
-      return { ...current, [siteId]: [...existing, vpId] };
-    });
-  }, []);
-
-  const removeVpFromSite = useCallback((siteId: string, vpId: VpId) => {
-    setSiteVps((current) => ({
-      ...current,
-      [siteId]: (current[siteId] ?? []).filter((id) => id !== vpId),
-    }));
-  }, []);
-
-  /** Bulk move, so handing a whole portfolio to another VP is one action. */
-  const reassignVpPortfolio = useCallback((from: VpId, to: VpId) => {
-    setSiteVps((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([siteId, ids]) => {
-          if (!ids.includes(from)) return [siteId, ids];
-          const next = ids.filter((id) => id !== from);
-          if (!next.includes(to)) next.push(to);
-          return [siteId, next];
-        }),
-      ),
-    );
-  }, []);
-
-  const setProcurement = useCallback(
-    (cluster: CoverageClusterId, personId: PersonId | null) => {
-      setAssignments((current) => ({
-        ...current,
-        [cluster]: { ...current[cluster], procurementId: personId },
-      }));
-    },
-    [],
-  );
-
-  const clearCluster = useCallback((cluster: CoverageClusterId) => {
-    setAssignments((current) => ({
-      ...current,
-      [cluster]: { procurementId: null },
-    }));
-  }, []);
-
-  const coverageForSite = useCallback(
-    (siteId: string): SiteCoverage => {
+  const value = useMemo<CoverageContextValue>(() => {
+    const coverageForSite = (siteId: string): SiteCoverage => {
       const cluster = coverageClusterFor(siteId);
       const shared = {
-        vps: (siteVps[siteId] ?? [])
+        vps: (SITE_VPS[siteId] ?? [])
           .map((id) => vpById(id))
           .filter((v): v is Vp => v !== null),
         team: teamForSite(siteId),
         contract: contractForSite(siteId),
       };
+
       if (cluster === null) {
         return {
           cluster: null,
@@ -145,38 +81,21 @@ export default function CoverageProvider({
           ...shared,
         };
       }
+
       return {
         cluster,
-        procurement: personById(assignments[cluster].procurementId),
+        procurement: personById(SEED_ASSIGNMENTS[cluster].procurementId),
         grantAnalyst: grantAnalystFor(siteId),
         ...shared,
       };
-    },
-    [assignments, siteVps],
-  );
+    };
 
-  const value = useMemo(
-    () => ({
-      assignments,
-      setProcurement,
-      clearCluster,
-      siteVps,
-      addVpToSite,
-      removeVpFromSite,
-      reassignVpPortfolio,
+    return {
+      assignments: SEED_ASSIGNMENTS,
+      siteVps: SITE_VPS,
       coverageForSite,
-    }),
-    [
-      assignments,
-      setProcurement,
-      clearCluster,
-      siteVps,
-      addVpToSite,
-      removeVpFromSite,
-      reassignVpPortfolio,
-      coverageForSite,
-    ],
-  );
+    };
+  }, []);
 
   return (
     <CoverageContext.Provider value={value}>

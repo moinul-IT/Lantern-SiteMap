@@ -237,8 +237,8 @@ function SiteExplorerBody() {
 
             <footer className="mt-6 border-t border-hairline pt-4 md:mt-8">
               <p className="font-mono text-[11px] text-ink-faint">
-                Assignments are made per coverage cluster; every site in a
-                cluster inherits them
+                Read-only. Procurement is assigned per cluster and inherited by
+                every site in it; VP and Grant Analyst are per site
               </p>
             </footer>
           </div>
