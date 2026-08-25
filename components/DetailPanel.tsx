@@ -115,8 +115,10 @@ export default function DetailPanel({
         // roughly half the screen so the map above it stays visible and
         // pannable while a site is selected — only "Full details" takes over.
         "fixed inset-x-0 bottom-0 z-[800] flex max-h-[54svh] flex-col rounded-t-2xl border-x-0 border-b-0 landscape:max-h-[76svh]",
-        // Desktop: back to the floating right-hand panel.
-        "md:static md:z-auto md:max-h-none md:w-[360px] md:rounded-2xl md:border",
+        // Desktop: back to the floating right-hand panel. min-h-0 lets it
+        // shrink into whatever height is left in the rail and scroll its own
+        // body, instead of running off the bottom of a short screen.
+        "md:static md:z-auto md:max-h-none md:min-h-0 md:w-[360px] md:rounded-2xl md:border",
         "overflow-hidden",
       ].join(" ")}
     >
@@ -217,23 +219,27 @@ export default function DetailPanel({
           </div>
 
           <CoverageCard siteId={site.id} compact />
+        </div>
+      </div>
 
-          <div className="mt-5 flex gap-2.5 md:mt-6">
-            <button
-              type="button"
-              onClick={() => onExpand(site.id)}
-              className="min-h-11 flex-1 rounded-xl bg-ink px-4 py-3 text-[13px] font-medium text-cream transition-colors duration-200 hover:bg-[#463a2c] active:bg-[#5a4a38]"
-            >
-              Full details
-            </button>
-            <button
-              type="button"
-              onClick={() => openDirections(site)}
-              className="min-h-11 rounded-xl border border-hairline bg-paper px-4 py-3 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep"
-            >
-              Directions
-            </button>
-          </div>
+      {/* Actions live outside the scroll area so they stay reachable however
+          little height the panel gets. */}
+      <div className="safe-b-0 shrink-0 border-t border-hairline bg-paper px-5 py-3.5 md:px-6 md:py-4">
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => onExpand(site.id)}
+            className="min-h-11 flex-1 rounded-xl bg-ink px-4 py-3 text-[13px] font-medium text-cream transition-colors duration-200 hover:bg-[#463a2c] active:bg-[#5a4a38]"
+          >
+            Full details
+          </button>
+          <button
+            type="button"
+            onClick={() => openDirections(site)}
+            className="min-h-11 rounded-xl border border-hairline bg-paper px-4 py-3 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep"
+          >
+            Directions
+          </button>
         </div>
       </div>
     </motion.aside>

@@ -321,7 +321,9 @@ function SiteExplorerBody() {
         <div className="safe-t safe-x pointer-events-none absolute inset-0 z-[600] flex flex-col justify-between gap-3 pb-3 md:gap-4 md:pb-6">
           {/* landscape: phones on their side only have ~375px of height, so the
               title and the controls share a row instead of stacking. */}
-          <div className="flex flex-col gap-2.5 landscape:flex-row landscape:items-start landscape:justify-between md:flex-row md:items-start md:justify-between md:gap-4">
+          {/* md:min-h-0 lets this row shrink to the viewport instead of pushing
+              the panel (and the legend) off the bottom of the screen. */}
+          <div className="flex flex-col gap-2.5 landscape:flex-row landscape:items-start landscape:justify-between md:min-h-0 md:flex-row md:items-start md:justify-between md:gap-4">
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -333,7 +335,7 @@ function SiteExplorerBody() {
 
             {/* min-w-0 + flex-1 lets the chip rail shrink to the space left beside
                 the title instead of overflowing past the right edge. */}
-            <div className="pointer-events-auto flex w-full flex-col gap-2 landscape:min-w-0 landscape:flex-1 landscape:items-end md:max-h-full md:min-w-0 md:flex-none md:items-end md:gap-2.5 md:overflow-y-auto">
+            <div className="pointer-events-auto flex w-full flex-col gap-2 landscape:min-w-0 landscape:flex-1 landscape:items-end md:max-h-full md:min-h-0 md:min-w-0 md:flex-none md:items-end md:gap-2.5 md:overflow-y-auto">
               {/* Wraps on phones so the search input gets its own full-width
                   row below the view toggle; stays inline from md up. */}
               <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap md:w-auto md:gap-2.5">
@@ -373,7 +375,11 @@ function SiteExplorerBody() {
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-4">
+          {/* From md up the legend is pinned to the bottom-left rather than
+              taking a row, so the right-hand panel can use the full height
+              beside it. px-6/pb-6 restore the wrapper's md safe-area padding,
+              which an absolute child sits outside of. */}
+          <div className="flex items-end justify-between gap-4 md:absolute md:inset-x-0 md:bottom-0 md:px-6 md:pb-6">
             <div className="pointer-events-auto">
               <Legend
                 counts={counts}
