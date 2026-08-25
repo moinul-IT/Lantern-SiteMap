@@ -114,7 +114,7 @@ export default function DetailPanel({
         // Phone: bottom sheet pinned to the viewport, rounded top only. Kept to
         // roughly half the screen so the map above it stays visible and
         // pannable while a site is selected — only "Full details" takes over.
-        "fixed inset-x-0 bottom-0 z-[800] flex max-h-[54svh] flex-col rounded-t-2xl border-x-0 border-b-0 landscape:max-h-[76svh]",
+        "fixed inset-x-0 bottom-0 z-[800] flex max-h-[54svh] flex-col rounded-t-2xl border-x-0 border-b-0 max-md:landscape:max-h-[76svh]",
         // Desktop: back to the floating right-hand panel. min-h-0 lets it
         // shrink into whatever height is left in the rail and scroll its own
         // body, instead of running off the bottom of a short screen.

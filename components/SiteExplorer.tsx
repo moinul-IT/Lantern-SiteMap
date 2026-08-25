@@ -319,11 +319,13 @@ function SiteExplorerBody() {
 
         {/* Floating chrome. The wrapper ignores pointer events so the map stays draggable. */}
         <div className="safe-t safe-x pointer-events-none absolute inset-0 z-[600] flex flex-col justify-between gap-3 pb-3 md:gap-4 md:pb-6">
-          {/* landscape: phones on their side only have ~375px of height, so the
-              title and the controls share a row instead of stacking. */}
-          {/* md:min-h-0 lets this row shrink to the viewport instead of pushing
+          {/* max-md:landscape: phones on their side only have ~375px of height,
+              so the title and the controls share a row instead of stacking.
+              Scoped with max-md because every desktop window is landscape too,
+              and these rules otherwise win over the md: ones below.
+              md:min-h-0 lets this row shrink to the viewport instead of pushing
               the panel (and the legend) off the bottom of the screen. */}
-          <div className="flex flex-col gap-2.5 landscape:flex-row landscape:items-start landscape:justify-between md:min-h-0 md:flex-row md:items-start md:justify-between md:gap-4">
+          <div className="flex flex-col gap-2.5 max-md:landscape:flex-row max-md:landscape:items-start max-md:landscape:justify-between md:min-h-0 md:flex-row md:items-start md:justify-between md:gap-4">
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -334,8 +336,12 @@ function SiteExplorerBody() {
             </motion.div>
 
             {/* min-w-0 + flex-1 lets the chip rail shrink to the space left beside
-                the title instead of overflowing past the right edge. */}
-            <div className="pointer-events-auto flex w-full flex-col gap-2 landscape:min-w-0 landscape:flex-1 landscape:items-end md:max-h-full md:min-h-0 md:min-w-0 md:flex-none md:items-end md:gap-2.5 md:overflow-y-auto">
+                the title instead of overflowing past the right edge.
+                The rail itself stays pointer-events-none and hands interactivity
+                to its cards instead: any bare rail area is an invisible sheet
+                over the map that eats scroll and drag. md:w-auto keeps it from
+                stretching across the map on top of that. */}
+            <div className="pointer-events-none flex w-full flex-col gap-2 [&>*]:pointer-events-auto max-md:landscape:min-w-0 max-md:landscape:flex-1 max-md:landscape:items-end md:max-h-full md:w-auto md:min-h-0 md:min-w-0 md:shrink md:grow-0 md:items-end md:gap-2.5 md:overflow-y-auto">
               {/* Wraps on phones so the search input gets its own full-width
                   row below the view toggle; stays inline from md up. */}
               <div className="flex w-full flex-wrap items-center gap-2 sm:flex-nowrap md:w-auto md:gap-2.5">
