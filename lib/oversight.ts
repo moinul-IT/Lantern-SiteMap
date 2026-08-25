@@ -77,6 +77,11 @@ export type StaffEntry = {
   name: string;
   /** Verbatim parenthetical from the chart, e.g. "Lindenguild" or "TZ". */
   note?: string;
+  /**
+   * Work address, from the Program Director contact list. Only the leads have
+   * one so far — the chart itself carries no emails.
+   */
+  email?: string;
 };
 
 export type SiteTeam = {
@@ -94,13 +99,23 @@ const CEDAR_SCHAFER: StaffEntry[] = [
 
 const LINDENGUILD_SILVERLEAF: StaffEntry[] = [
   { role: "SPD", name: "Yolanda Jones" },
-  { role: "PD", name: "Claudette Stubbs", note: "Lindenguild" },
+  {
+    role: "PD",
+    name: "Claudette Stubbs",
+    note: "Lindenguild",
+    email: "cstubbs@lanterncommunity.org",
+  },
   { role: "APD", name: "Vacant" },
   { role: "PA", name: "Ayesha Delk", note: "Silverleaf Hall" },
 ];
 
 const AMBER_LEEWARD: StaffEntry[] = [
-  { role: "SPD", name: "Anthony Mercedes", note: "Leeward" },
+  {
+    role: "SPD",
+    name: "Anthony Mercedes",
+    note: "Leeward",
+    email: "AMercedes@lanterncommunity.org",
+  },
   { role: "APD", name: "Jessica Williams" },
   { role: "PA", name: "Rasheeda Richardson" },
 ];
@@ -112,7 +127,12 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   // chart and are left alone.
   "laurel-hall": {
     staff: [
-      { role: "PD", name: "Michael Wells", note: "TZ" },
+      {
+        role: "PD",
+        name: "Michael Wells",
+        note: "TZ",
+        email: "mwells@lanterncommunity.org",
+      },
       { role: "DPO", name: "Sheryl Lowe", note: "TV" },
       { role: "DSS", name: "Vacant" },
       { role: "Admin", name: "Christina Joly" },
@@ -120,7 +140,11 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   "liberty-plaza": {
     staff: [
-      { role: "PD", name: "Shawna Scott" },
+      {
+        role: "PD",
+        name: "Shawna Scott",
+        email: "sscott@lanterncommunity.org",
+      },
       { role: "DPO", name: "Adedeji Adewusi" },
       { role: "DSS", name: "Jocelyn Berrios" },
       { role: "Admin", name: "Brandy Marshall" },
@@ -131,7 +155,11 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
     alsoKnownAs: "Stillwell Avenue",
     staff: [
       { role: "DPO", name: "Vacant" },
-      { role: "PD", name: "Tasha Williams" },
+      {
+        role: "PD",
+        name: "Tasha Williams",
+        email: "twilliams@lanterncommunity.org",
+      },
       { role: "DSS", name: "Vacant" },
       { role: "Admin", name: "Vacant" },
     ],
@@ -164,14 +192,22 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   "vicinitas-hall": {
     staff: [
-      { role: "PD", name: "KC Hunt" },
+      {
+        role: "PD",
+        name: "KC Hunt",
+        email: "khunt@lanterncommunity.org",
+      },
       { role: "APD", name: "Jazmyne Nichols" },
       { role: "PA", name: "Vacant" },
     ],
   },
   "audubon-hall": {
     staff: [
-      { role: "PD", name: "Carlos Castro" },
+      {
+        role: "PD",
+        name: "Carlos Castro",
+        email: "CCastro@lanterncommunity.org",
+      },
       { role: "APD", name: "Ashley Warren" },
       { role: "PA", name: "Franchesca Monegro" },
     ],
@@ -187,19 +223,33 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   "prospero-hall": {
     staff: [
-      { role: "PD", name: "James Fritts" },
+      {
+        role: "PD",
+        name: "James Fritts",
+        email: "JFritts@lanterncommunity.org",
+      },
       { role: "APD", name: "Phyllis Ferrara" },
     ],
   },
   "jasper-hall": {
     staff: [
-      { role: "PD", name: "Tamika Coates" },
+      {
+        role: "PD",
+        name: "Tamika Coates",
+        email: "TCoates@lanterncommunity.org",
+      },
       { role: "APD", name: "Vacant" },
       { role: "PA", name: "Ivy Isaac" },
     ],
   },
   "stardom-hall": {
-    staff: [{ role: "PD", name: "Cyril Jacobs" }],
+    staff: [
+      {
+        role: "PD",
+        name: "Cyril Jacobs",
+        email: "CJacobs@lanterncommunity.org",
+      },
+    ],
   },
   "amber-hall": {
     groupLabel: "Amber Hall / Leeward Hall",
@@ -212,35 +262,55 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
 
   "huntersmoon-hall": {
     staff: [
-      { role: "PD", name: "Michelle Perez" },
+      {
+        role: "PD",
+        name: "Michelle Perez",
+        email: "MPerez@lanterncommunity.org",
+      },
       { role: "APD", name: "Samuel Asante" },
       { role: "PA", name: "Vacant" },
     ],
   },
   "euclid-glenmore": {
     staff: [
-      { role: "PD", name: "Ebonie Mickens" },
+      {
+        role: "PD",
+        name: "Ebonie Mickens",
+        email: "emickens@lanterncommunity.org",
+      },
       { role: "APD", name: "Vacant" },
       { role: "PA", name: "Vacant" },
     ],
   },
   "clover-hall": {
     staff: [
-      { role: "PD", name: "Niesha Sergeant" },
+      {
+        role: "PD",
+        name: "Niesha Sergeant",
+        email: "nsergeant@lanterncommunity.org",
+      },
       { role: "APD", name: "Eugene Brown" },
       { role: "PA", name: "Regina Azzara" },
     ],
   },
   "rustin-house": {
     staff: [
-      { role: "PD", name: "John Lim" },
+      {
+        role: "PD",
+        name: "John Lim",
+        email: "JLim@lanterncommunity.org",
+      },
       { role: "APD", name: "Colette Garcia" },
       { role: "PA", name: "Jackie Crisp" },
     ],
   },
   "hunterfly-trace": {
     staff: [
-      { role: "PD", name: "Paul Amoah" },
+      {
+        role: "PD",
+        name: "Paul Amoah",
+        email: "pamoah@lanterncommunity.org",
+      },
       { role: "PA", name: "Rubin Tejada" },
     ],
   },

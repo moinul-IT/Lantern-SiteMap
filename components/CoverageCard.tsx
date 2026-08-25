@@ -169,6 +169,14 @@ function StaffRow({ entry, compact }: { entry: StaffEntry; compact: boolean }) {
       >
         {name}
       </p>
+      {entry.email && (
+        <a
+          href={`mailto:${entry.email}`}
+          className="block truncate font-mono text-[11px] text-ink-faint underline decoration-hairline underline-offset-2 transition-colors duration-200 hover:text-ink"
+        >
+          {entry.email}
+        </a>
+      )}
     </li>
   );
 }
