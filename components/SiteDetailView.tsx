@@ -3,9 +3,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import CoverageCard from "./CoverageCard";
+import DirectionsButton from "./DirectionsButton";
 import SitePhoto from "./SitePhoto";
 import { formatDistance, nearestSites } from "@/lib/geo";
-import { openDirections } from "@/lib/directions";
 import {
   BOROUGH_COLORS,
   CLUSTER_COLORS,
@@ -210,7 +210,12 @@ export default function SiteDetailView({
           </ul>
         </Section>
 
-        <Section index={4} className="mt-6 flex flex-wrap gap-2.5 md:mt-7">
+        {/* items-end keeps the row on one baseline when the maps chooser
+            expands the directions control upward. */}
+        <Section
+          index={4}
+          className="mt-6 flex flex-wrap items-end gap-2.5 md:mt-7"
+        >
           <button
             type="button"
             onClick={() => onViewOnMap(place.id)}
@@ -218,13 +223,11 @@ export default function SiteDetailView({
           >
             View on map
           </button>
-          <button
-            type="button"
-            onClick={() => openDirections(place)}
-            className="min-h-11 flex-1 rounded-xl border border-hairline bg-paper px-4 py-3.5 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep md:flex-none"
-          >
-            Get directions
-          </button>
+          <DirectionsButton
+            place={place}
+            label="Get directions"
+            className="flex-1 md:flex-none"
+          />
           <button
             type="button"
             onClick={() => {

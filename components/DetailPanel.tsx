@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { motion, type PanInfo } from "framer-motion";
 import CoverageCard from "./CoverageCard";
+import DirectionsButton from "./DirectionsButton";
 import SitePhoto from "./SitePhoto";
 import { nearestSites, formatDistance } from "@/lib/geo";
-import { openDirections } from "@/lib/directions";
 import {
   BOROUGH_COLORS,
   OFFICE_COLORS,
@@ -225,7 +225,9 @@ export default function DetailPanel({
       {/* Actions live outside the scroll area so they stay reachable however
           little height the panel gets. */}
       <div className="safe-b-0 shrink-0 border-t border-hairline bg-paper px-5 py-3.5 md:px-6 md:py-4">
-        <div className="flex gap-2.5">
+        {/* items-end keeps "Full details" level with the Directions button when
+            the maps chooser expands the control upward. */}
+        <div className="flex items-end gap-2.5">
           <button
             type="button"
             onClick={() => onExpand(site.id)}
@@ -233,13 +235,12 @@ export default function DetailPanel({
           >
             Full details
           </button>
-          <button
-            type="button"
-            onClick={() => openDirections(site)}
-            className="min-h-11 rounded-xl border border-hairline bg-paper px-4 py-3 text-[13px] text-ink-soft transition-colors duration-200 hover:bg-cream hover:text-ink active:bg-cream-deep"
-          >
-            Directions
-          </button>
+          <DirectionsButton
+            place={site}
+            label="Directions"
+            size="sm"
+            className="shrink-0"
+          />
         </div>
       </div>
     </motion.aside>

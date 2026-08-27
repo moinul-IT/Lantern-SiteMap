@@ -79,6 +79,7 @@ components/
   ViewToggle.tsx    Map / All sites segmented control
   Legend.tsx        bottom-left borough legend with counts
   TitleBlock.tsx    eyebrow + title + animated live count
+  DirectionsButton.tsx  directions split button + Apple/Google chooser
   PwaChrome.tsx     mounts the three PWA pills once, in the root layout
   ServiceWorkerRegistrar.tsx  registers /sw.js, offers a reload on update
   InstallPrompt.tsx add-to-home-screen pill (+ iOS Safari instructions)
@@ -88,7 +89,7 @@ lib/
   geo.ts            haversine, nearest-neighbour, distance formatting
   filter.ts         search + borough filtering
   marker.ts         borough-coloured divIcon builder
-  directions.ts     Apple Maps vs Google Maps URL by platform
+  directions.ts     Apple/Google directions URLs + the remembered choice
 public/
   sw.js             service worker: app shell, static assets, map tiles
   offline.html      standalone fallback for a cold launch with no network
@@ -133,6 +134,40 @@ Designed mobile-first from ~375px up, portrait and landscape.
   smaller makes iOS Safari zoom the page on focus.
 - Landscape phones put the title and controls on one row, cutting chrome from 42%
   to 29% of a 375px-tall viewport.
+
+## Directions
+
+Every site opens in **Apple Maps or Google Maps**, the user's choice, from both
+the map panel and the in-depth view.
+
+- The control is a split button: the main half opens whichever provider is
+  already chosen (one tap, the common case), and the chevron expands a chooser.
+  Picking from the chooser both opens that provider *and* remembers it, so
+  switching costs one tap now and none afterwards.
+- Before anyone chooses, the provider is guessed from the platform — Apple on
+  iPhone/iPad/Mac, Google elsewhere — so the first tap is right most of the time
+  with no settings trip. That was the app's original behaviour, and it is now
+  just the default rather than the only option.
+- The choice lives in `lib/directions.ts` as a small observable store, not in
+  component state, because it outlives any one panel: the map panel and the
+  in-depth view can both be mounted, and picking Google in one must not leave
+  the other still saying Apple. Both read it through `useSyncExternalStore`.
+  Persisted in `localStorage`, with an in-memory fallback so the choice still
+  holds for the session when storage is unavailable (private browsing).
+- URLs carry coordinates rather than addresses (`?daddr=` for Apple,
+  `?api=1&destination=` for Google), which sidesteps the geocoding
+  discrepancies noted under **Data notes**.
+
+Two layout notes, both load-bearing:
+
+- The chooser expands the row **inline** rather than floating over it, because
+  `DetailPanel` is `overflow-hidden` (that is what rounds its corners) and an
+  absolutely positioned popover would be clipped at the panel edge.
+- Its two options are **stacked**, not side by side. A flex item sizes to its
+  max-content, which `flex-wrap` does not reduce, so a row of two pills would
+  make the control wider than its own button and squeeze the neighbouring
+  button into wrapping. Stacked, the widest option is narrower than the button
+  row, so opening the chooser leaves the row's width untouched.
 
 ## Progressive web app
 
@@ -202,9 +237,22 @@ Bump `VERSION` in `sw.js` to retire every cache on the next activation.
   `false`, and a page served entirely from the service worker fires no `offline`
   event and fails no request for it to notice.
 
-`PwaChrome` mounts all three once in the root layout, at `z-700`: above the map
-chrome, below the mobile detail sheet and the in-depth overlay, since a
-transient pill has no business covering what the user just opened.
+`PwaChrome` mounts all three once in the root layout. Its layering is fiddlier
+than it looks: SiteExplorer's floating chrome wrapper is `z-600` *and*
+positioned, so it is a stacking context — everything inside it, including the
+phone detail sheet's own `z-800`, collapses to that single 600 as far as
+anything outside is concerned. There is no slot between the legend and the sheet
+to take from the layout, so the pills sit **below** the lot at `z-550`; above
+it, a transient pill covers the sheet's action row and swallows the taps meant
+for it. On phones they also sit `bottom-16` rather than flush, clearing the
+legend-and-zoom band instead of fighting it for the same space.
+
+Relatedly, `globals.css` drops Leaflet's control containers from their default
+`z-index: 1000` to 500. At 1000 the zoom buttons painted over the phone detail
+sheet and intercepted taps on the controls inside it. 500 keeps them above the
+whole map (`.leaflet-map-pane` is itself a `.leaflet-pane` at 400 and a stacking
+context, so every tile/marker/popup pane nested in it stays below) while sitting
+under the app's chrome.
 
 ### Regenerating the icons
 

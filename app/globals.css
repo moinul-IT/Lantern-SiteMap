@@ -192,6 +192,19 @@ body {
   color: var(--color-ink) !important;
 }
 
+/* Leaflet puts its control containers at z-index 1000, which is above every
+   piece of this app's own chrome — so the zoom buttons painted over the phone
+   detail sheet and swallowed taps meant for the controls inside it.
+   500 keeps them above the entire map (`.leaflet-map-pane` is itself a
+   `.leaflet-pane` at 400 and a stacking context, so all the tile/marker/popup
+   panes nested in it stay below this) while sitting under the floating chrome
+   at 600. The attribution shares these containers and so is covered by the
+   sheet while it is open, which is the same trade every map app makes. */
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 500;
+}
+
 /* Keep both bottom-right controls clear of the home indicator. */
 .leaflet-bottom.leaflet-right {
   margin-bottom: env(safe-area-inset-bottom);
