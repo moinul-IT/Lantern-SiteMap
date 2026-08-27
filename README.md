@@ -118,6 +118,34 @@ Nearest-neighbour distances are computed against all 21 sites regardless of the
 active filter, so a site's closest neighbour can be in another borough (Leeward
 Hall → Schafer Hall, Laurel Hall → Euclid-Glenmore).
 
+## The app shell: two modes
+
+The shell sizes itself one of two ways, and `globals.css` decides which in a
+single media query — `(pointer: coarse), (max-width: 767px)`, the same predicate
+the zoom-button sizing uses. Deliberately **not** a width breakpoint alone: a
+landscape phone is 844px wide and 390px tall, so a width test hands it the
+desktop treatment it very much does not want.
+
+**Touch, or a narrow window — a locked full-screen shell.** `body` is
+`position: fixed; inset: 0` with `overflow: hidden`. The map is the app here, and
+a document that cannot scroll is what stops iOS rubber-banding it out from under
+the chrome. Views that can outgrow the screen (All sites, Coverage) carry
+`.app-scroll` and scroll themselves.
+
+The fixed inset replaced a `height: 100dvh`, which was subtly wrong in the one
+place it mattered most: in an **installed iOS PWA** with `viewportFit: "cover"`,
+`dvh` resolves to the *safe* viewport rather than the screen, so the strip behind
+the home indicator was left painted with the body background instead of the map —
+a dead cream band along the bottom edge. A fixed inset covers the layout
+viewport, safe areas included, and unlike any viewport height unit it does not
+depend on the URL bar either.
+
+**Everything else — a normal scrolling page.** `body` has `min-height: 100dvh`
+and no lock, so a long list scrolls the window rather than being trapped in an
+inner scroller with the frame frozen around it. The map view is the one thing
+that must stay exactly one screen tall, so it carries `.app-viewport` and states
+its own height.
+
 ## Mobile
 
 Designed mobile-first from ~375px up, portrait and landscape.

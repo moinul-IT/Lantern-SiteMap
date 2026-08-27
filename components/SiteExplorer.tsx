@@ -221,7 +221,7 @@ function SiteExplorerBody() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
-          className="flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-cream"
+          className="app-scroll flex flex-col overflow-x-hidden bg-cream"
         >
           <div className="safe-t safe-b safe-x mx-auto flex w-full max-w-[1600px] flex-1 flex-col md:px-10">
             <header className="flex flex-col gap-3 border-b border-hairline pb-5 md:gap-5 md:pb-6 lg:flex-row lg:items-end lg:justify-between">
@@ -256,7 +256,7 @@ function SiteExplorerBody() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25, ease: [0.22, 0.61, 0.36, 1] }}
-          className="flex h-full flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-cream"
+          className="app-scroll flex flex-col overflow-x-hidden bg-cream"
         >
           <div className="safe-t safe-b safe-x mx-auto flex w-full max-w-[1600px] flex-1 flex-col md:px-10">
             <header className="flex flex-col gap-3 border-b border-hairline pb-5 md:gap-5 md:pb-6 lg:flex-row lg:items-end lg:justify-between">
@@ -303,7 +303,7 @@ function SiteExplorerBody() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <div className="relative h-full w-full overflow-hidden">
+      <div className="app-viewport relative w-full overflow-hidden">
         <SiteMap
           sites={visibleSites}
           office={office}

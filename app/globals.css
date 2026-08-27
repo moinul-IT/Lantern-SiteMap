@@ -32,8 +32,7 @@
   --ease-calm: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-html,
-body {
+html {
   height: 100%;
 }
 
@@ -42,13 +41,64 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  /* dvh tracks the shrinking/growing mobile URL bar so the map never leaves a
-     dead strip at the bottom. */
-  height: 100dvh;
   /* Stops iOS from inflating type in landscape. */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overscroll-behavior: none;
+
+  /* Desktop: a normal scrolling page, so a long list is not trapped in an
+     inner scroller with the window frozen around it. */
+  min-height: 100dvh;
+}
+
+/*
+ * The app shell has two modes, and the query below is the only place the choice
+ * is made. `.app-viewport` is a view that must be exactly one screen tall (the
+ * map); `.app-scroll` is a view that can outgrow the screen (All sites,
+ * Coverage). Both are applied in SiteExplorer.
+ *
+ * The predicate is "touch-primary, or a narrow window" — deliberately not a
+ * width breakpoint, which a landscape phone (844px wide, 390px tall) sails past
+ * while still needing the locked treatment. It matches the query the zoom-button
+ * sizing uses further down; the two should stay in step.
+ */
+.app-viewport {
+  /* Desktop: the body has no fixed height to inherit, so state one. */
+  height: 100dvh;
+}
+
+@media (pointer: coarse), (max-width: 767px) {
+  /*
+   * A locked full-screen shell: the map *is* the app here, and a document that
+   * cannot scroll is what stops iOS rubber-banding it away from under the
+   * chrome.
+   *
+   * `position: fixed; inset: 0` rather than the `100dvh` height this used to
+   * carry — in an installed iOS PWA with `viewportFit: "cover"`, dvh resolves
+   * to the *safe* viewport rather than the screen, so the strip behind the home
+   * indicator was left painted with the body background instead of the map. The
+   * fixed inset covers the layout viewport, safe areas included, and unlike a
+   * viewport height unit it does not depend on the URL bar either.
+   */
+  body {
+    position: fixed;
+    inset: 0;
+    /* The insets define the height; this would otherwise fight them. */
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* Exactly the shell, with no dvh involved. */
+  .app-viewport {
+    height: 100%;
+  }
+
+  /* The window cannot scroll here, so these views scroll themselves. */
+  .app-scroll {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 
 /* Safe-area helpers. Paired with viewportFit:"cover" in app/layout.tsx. */

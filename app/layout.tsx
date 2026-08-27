@@ -79,7 +79,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="h-full overflow-hidden overscroll-none">
+      {/* Sizing and scroll behaviour live in globals.css, which needs a media
+          query to swap the locked phone shell for a scrolling desktop page —
+          utilities here would just fight it. */}
+      <body>
         {children}
         <PwaChrome />
       </body>
