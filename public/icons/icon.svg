@@ -1,0 +1,21 @@
+<svg width="512" height="512" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <title>Lantern Maps</title>
+  <!-- Source of truth for the PNGs beside this file. Same lantern geometry as
+       app/icon.svg (the favicon), drawn on the 32-unit grid and scaled up by
+       the viewBox so it stays crisp at any size. -->
+  <rect width="32" height="32" rx="7.5" fill="#33291F" />
+  <path
+    d="M12.6 7.4a3.4 3.4 0 0 1 6.8 0"
+    fill="none"
+    stroke="#F7F2E9"
+    stroke-width="1.7"
+    stroke-linecap="round"
+  />
+  <rect x="9.8" y="7.6" width="12.4" height="2.6" rx="1.1" fill="#F7F2E9" />
+  <path
+    d="M11.4 10.9h9.2l1.5 10.2a1 1 0 0 1-1 1.1H10.9a1 1 0 0 1-1-1.1z"
+    fill="#F7F2E9"
+  />
+  <circle cx="16" cy="16" r="2.9" fill="#C2632E" />
+  <rect x="9.4" y="22.6" width="13.2" height="2.6" rx="1.1" fill="#F7F2E9" />
+</svg>

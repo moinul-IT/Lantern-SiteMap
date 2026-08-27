@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import PwaChrome from "@/components/PwaChrome";
 import "leaflet/dist/leaflet.css";
 import "./globals.css";
 
@@ -26,27 +27,38 @@ const description =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Lantern Sites",
-    template: "%s · Lantern Sites",
+    default: "Lantern Maps",
+    template: "%s · Lantern Maps",
   },
   description,
-  applicationName: "Lantern Sites",
+  applicationName: "Lantern Maps",
   // Internal staff tool: it should never turn up in search results.
   robots: { index: false, follow: false, nocache: true },
   openGraph: {
     type: "website",
-    siteName: "Lantern Sites",
-    title: "Lantern Sites",
+    siteName: "Lantern Maps",
+    title: "Lantern Maps",
     description,
     url: siteUrl,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lantern Sites",
+    title: "Lantern Maps",
     description,
   },
   formatDetection: { telephone: false, address: false, email: false },
+  /**
+   * Installed-app behaviour on iOS, which reads none of the web app manifest.
+   * `title` is the home-screen label; "black-translucent" runs the map under
+   * the status bar, which is what the safe-area insets already account for.
+   * The <link rel="manifest"> itself is emitted by app/manifest.ts.
+   */
+  appleWebApp: {
+    capable: true,
+    title: "Lantern Maps",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 /**
@@ -67,7 +79,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="h-full overflow-hidden overscroll-none">{children}</body>
+      <body className="h-full overflow-hidden overscroll-none">
+        {children}
+        <PwaChrome />
+      </body>
     </html>
   );
 }

@@ -10,3 +10,20 @@
 [build.environment]
   # Next 16 requires >= 20.9
   NODE_VERSION = "22"
+
+# The service worker must be revalidated on every request: a cached copy of
+# sw.js means a deploy can go unnoticed for as long as it stays fresh. Netlify
+# serves files from public/ off its CDN, so the matching rule in
+# next.config.ts (which only covers `next start`) does not apply here.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Stable filenames rather than hashed ones, so this is a week rather than a
+# year: long enough that a launcher icon is not refetched, short enough that
+# redrawing the mark lands without renaming every file.
+[[headers]]
+  for = "/icons/*"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f7f2e9" />
+    <title>Offline · Lantern Maps</title>
+    <!--
+      Last-resort fallback, served by the service worker when a navigation has
+      no network and the app shell was never cached (a first-ever launch while
+      offline). It is deliberately standalone: no fonts, no CSS bundle, no JS,
+      because none of those would be cached either.
+    -->
+    <style>
+      :root {
+        --cream: #f7f2e9;
+        --paper: #fdfbf7;
+        --ink: #33291f;
+        --ink-soft: #6b5f52;
+        --ink-faint: #9a8f82;
+        --hairline: #e4dbcb;
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem;
+        background: var(--cream);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .card {
+        width: 100%;
+        max-width: 26rem;
+        padding: 2rem 1.75rem;
+        border: 1px solid var(--hairline);
+        border-radius: 1rem;
+        background: var(--paper);
+        box-shadow: 0 1px 2px rgb(51 41 31 / 0.04), 0 8px 24px -6px rgb(51 41 31 / 0.14);
+        text-align: center;
+      }
+      .mark { width: 56px; height: 56px; margin: 0 auto 1.25rem; display: block; }
+      .eyebrow {
+        margin: 0 0 0.5rem;
+        font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+        font-size: 11px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-faint);
+      }
+      h1 {
+        margin: 0 0 0.75rem;
+        font-family: ui-serif, Georgia, serif;
+        font-size: 1.6rem;
+        font-weight: 400;
+        letter-spacing: -0.01em;
+      }
+      p { margin: 0 0 1.5rem; font-size: 0.9375rem; line-height: 1.55; color: var(--ink-soft); }
+      button {
+        min-height: 44px;
+        padding: 0 1.5rem;
+        border: 1px solid var(--ink);
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--cream);
+        font: inherit;
+        font-size: 0.9375rem;
+        cursor: pointer;
+      }
+      button:hover { background: #241d15; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="7.5" fill="#33291F" />
+        <path d="M12.6 7.4a3.4 3.4 0 0 1 6.8 0" fill="none" stroke="#F7F2E9" stroke-width="1.7" stroke-linecap="round" />
+        <rect x="9.8" y="7.6" width="12.4" height="2.6" rx="1.1" fill="#F7F2E9" />
+        <path d="M11.4 10.9h9.2l1.5 10.2a1 1 0 0 1-1 1.1H10.9a1 1 0 0 1-1-1.1z" fill="#F7F2E9" />
+        <circle cx="16" cy="16" r="2.9" fill="#C2632E" />
+        <rect x="9.4" y="22.6" width="13.2" height="2.6" rx="1.1" fill="#F7F2E9" />
+      </svg>
+      <p class="eyebrow">Lantern Maps</p>
+      <h1>No connection</h1>
+      <p>
+        The map needs the network the first time it loads. Once it has loaded
+        once, the sites and the tiles you have already looked at stay available
+        offline.
+      </p>
+      <button type="button" onclick="location.reload()">Try again</button>
+    </div>
+  </body>
+</html>

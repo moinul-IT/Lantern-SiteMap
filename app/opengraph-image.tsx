@@ -8,7 +8,7 @@ import {
 } from "@/lib/sites";
 
 export const alt =
-  "Lantern Sites — internal map of Lantern Community Services housing";
+  "Lantern Maps — internal map of Lantern Community Services housing";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -91,7 +91,7 @@ export default async function Image() {
             display: "flex",
           }}
         >
-          Lantern Sites
+          Lantern Maps
         </div>
 
         <div

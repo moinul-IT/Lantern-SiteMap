@@ -1,7 +1,7 @@
-# Lantern Sites
+# Lantern Maps
 
 Internal map of Lantern Community Services supportive-housing sites across NYC.
-Read-only, hardcoded data, no database, no auth.
+Read-only, hardcoded data, no database, no auth. Installable as a PWA.
 
 ## Run locally
 
@@ -61,8 +61,9 @@ endpoint and all site coordinates are baked into the source.
 
 ```
 app/
-  layout.tsx        fonts (Fraunces + Inter), Leaflet CSS, metadata
+  layout.tsx        fonts (Fraunces + Inter), Leaflet CSS, metadata, PWA chrome
   page.tsx          server component, renders the explorer
+  manifest.ts       web app manifest, served at /manifest.webmanifest
   globals.css       theme tokens, Leaflet overrides, marker/pin styles
 components/
   SiteExplorer.tsx  owns all state; switches between map and list views
@@ -78,12 +79,20 @@ components/
   ViewToggle.tsx    Map / All sites segmented control
   Legend.tsx        bottom-left borough legend with counts
   TitleBlock.tsx    eyebrow + title + animated live count
+  PwaChrome.tsx     mounts the three PWA pills once, in the root layout
+  ServiceWorkerRegistrar.tsx  registers /sw.js, offers a reload on update
+  InstallPrompt.tsx add-to-home-screen pill (+ iOS Safari instructions)
+  OfflineBanner.tsx connectivity banner, via next/offline
 lib/
   sites.ts          the 21 sites + the admin office, frozen lat/lng, colours
   geo.ts            haversine, nearest-neighbour, distance formatting
   filter.ts         search + borough filtering
   marker.ts         borough-coloured divIcon builder
   directions.ts     Apple Maps vs Google Maps URL by platform
+public/
+  sw.js             service worker: app shell, static assets, map tiles
+  offline.html      standalone fallback for a cold launch with no network
+  icons/            manifest icons (SVG sources + rendered PNGs)
 ```
 
 ## Data notes
@@ -124,6 +133,103 @@ Designed mobile-first from ~375px up, portrait and landscape.
   smaller makes iOS Safari zoom the page on focus.
 - Landscape phones put the title and controls on one row, cutting chrome from 42%
   to 29% of a 375px-tall viewport.
+
+## Progressive web app
+
+Installs as **Lantern Maps** — its own home-screen icon, no browser chrome, and
+the sites available with no connection.
+
+- `app/manifest.ts` is the manifest (Next serves it at `/manifest.webmanifest`
+  and injects the `<link>`; nothing in `layout.tsx` references it). `display:
+  standalone`, `orientation: any` because the explorer is built for both, and
+  `background_color` is `--color-cream` so the splash screen is the same paper
+  the map sits on rather than a white flash.
+- `metadata.appleWebApp` in `app/layout.tsx` covers iOS, which reads none of the
+  manifest. `statusBarStyle: "black-translucent"` runs the map under the status
+  bar, which the existing safe-area insets already account for.
+- **Icons** live in `public/icons/`. `icon.svg` and `maskable.svg` are the
+  sources; the PNGs beside them are rendered from those two files. The maskable
+  pair is a separate manifest entry rather than a `purpose` on the standard
+  icons, because a launcher that crops to a circle would clip the mark — in
+  `maskable.svg` the lantern is scaled to 0.75 to sit inside the safe circle,
+  and the background is full-bleed with no corner radius of its own.
+
+### What works offline
+
+`public/sw.js` is hand-written — no build step, no generated file to keep in
+sync. Three caches, each with the strategy that request deserves:
+
+| Cache | Contents | Strategy |
+| --- | --- | --- |
+| `shell` | the `/` document, `offline.html` | Network-first |
+| `static` | `/_next/static/**` and other same-origin assets | Cache-first when hashed, else stale-while-revalidate |
+| `tiles` | CARTO basemap tiles | Cache-first, LRU-capped at 500 |
+
+So after one online visit: the app opens with no network, all 21 sites and the
+coverage data are there (they are baked into the bundle, not fetched), and the
+map draws for any area already looked at. Tiles for an area never visited stay
+blank — nothing can be done about that without shipping a tile pack.
+
+The shell is deliberately **network-first**, not cache-first: the HTML carries
+the hashed script URLs for a deploy, and a stale copy would ask for chunks that
+no longer exist.
+
+Three things it never touches: non-`GET` requests (which includes the `HEAD`
+probe `next/offline` uses to test connectivity — answering that from cache would
+report "online" with the network down), RSC payloads (they vary by request
+header and are not interchangeable with the HTML at the same URL), and range
+requests. It also does not register at all in development, where chunk URLs are
+unhashed and cache-first would pin stale code across an edit.
+
+Bump `VERSION` in `sw.js` to retire every cache on the next activation.
+
+### Update and install flow
+
+- A new worker never activates on its own — that would swap the JS chunks out
+  from under a running page. `ServiceWorkerRegistrar` shows "A new version is
+  ready" and applies it on the reload.
+- `InstallPrompt` takes two paths, because there is no single cross-browser one:
+  Chromium's `beforeinstallprompt` is deferred and replayed from a real button
+  (one tap); iOS Safari exposes no install API at all, so the only honest thing
+  to offer is the Share → Add to Home Screen instruction. Anywhere else neither
+  applies and nothing is shown. "Not now" is remembered in `localStorage`.
+- `OfflineBanner` unions two signals, because each covers the other's blind
+  spot. `useOffline` from `next/offline` (`experimental.useOffline` in
+  `next.config.ts`) also counts a *failed request* as offline, catching wifi with
+  no route out — where `navigator.onLine` still cheerfully reports true, and
+  exactly the case that leaves the map half-drawn. `navigator.onLine` in turn
+  catches launching while already offline, which the hook cannot: it starts at
+  `false`, and a page served entirely from the service worker fires no `offline`
+  event and fails no request for it to notice.
+
+`PwaChrome` mounts all three once in the root layout, at `z-700`: above the map
+chrome, below the mobile detail sheet and the in-depth overlay, since a
+transient pill has no business covering what the user just opened.
+
+### Regenerating the icons
+
+Edit `icon.svg` / `maskable.svg`, then re-render the four PNGs. Any SVG
+rasteriser will do; this is the no-dependency version, using the headless Chrome
+already on most machines. The SVG is wrapped in a page sized exactly to the
+target so the render fills the frame:
+
+```bash
+for spec in icon:192 icon:512 maskable:192 maskable:512; do
+  name=${spec%%:*}; size=${spec#*:}
+  { echo "<style>html,body{margin:0;width:${size}px;height:${size}px}"
+    echo "svg{display:block;width:${size}px;height:${size}px}</style>"
+    cat "public/icons/$name.svg"
+  } > /tmp/$name-$size.html
+  chrome --headless --hide-scrollbars --force-device-scale-factor=1 \
+    --screenshot="public/icons/$name-$size.png" --window-size=$size,$size \
+    "file:///tmp/$name-$size.html"
+done
+```
+
+One trap: use a real **headless shell** binary (Playwright's
+`chromium_headless_shell`, or `chrome --headless=old`). With a windowed Chrome
+build `--window-size` sets the *outer* window, so the viewport comes out ~80px
+shorter and the icon is clipped along the bottom edge.
 
 ## The admin office
 
