@@ -54,8 +54,9 @@ That publishes a draft URL. When it looks right, promote to production:
 netlify deploy --build --prod
 ```
 
-No environment variables are required — tiles come from CARTO's keyless
-endpoint and all site coordinates are baked into the source.
+No environment variables are required — the basemap needs no key and all site
+coordinates are baked into the source. See **Basemap tiles** below before this
+gets a wider audience than a handful of staff.
 
 ## Structure
 
@@ -67,7 +68,7 @@ app/
   globals.css       theme tokens, Leaflet overrides, marker/pin styles
 components/
   SiteExplorer.tsx  owns all state; switches between map and list views
-  SiteMap.tsx       Leaflet map, CARTO Voyager tiles, fit-bounds, fly-to
+  SiteMap.tsx       Leaflet map, OSM tiles, fit-bounds, fly-to
   DetailPanel.tsx   compact map-side panel with nearby sites and actions
   SiteDetailView.tsx  in-depth view (lazy-loaded) with View on map / directions
   SiteDetailSkeleton.tsx  shimmer placeholder while that chunk loads
@@ -95,6 +96,47 @@ public/
   offline.html      standalone fallback for a cold launch with no network
   icons/            manifest icons (SVG sources + rendered PNGs)
 ```
+
+## Basemap tiles
+
+`https://tile.openstreetmap.org/{z}/{x}/{y}.png`, set in `components/SiteMap.tsx`.
+
+This was CARTO's Voyager raster endpoint, which **stopped being keyless** — it
+now answers with "API KEY REQUIRED" stamped across every tile, which is what the
+map looked like before this change. OpenStreetMap's own tile server needs no key
+and no account, so the app still deploys with zero configuration.
+
+Three consequences worth knowing:
+
+- **The OSM Tile Usage Policy applies.** Heavy use is not permitted without
+  asking first. Fine for an internal tool with a handful of staff; if this ever
+  gets a wider audience, move to a keyed provider (Stadia, MapTiler,
+  Thunderforest, or CARTO with a key) rather than leaning harder on a free
+  community service.
+- **No `@2x` tiles**, so `detectRetina` is off. With no `{r}` in the URL it would
+  only fetch z+1 tiles and scale them down — quadrupling requests to sharpen a
+  phone screen. Tiles are softer on a 3x display as a result; a keyed provider
+  that serves @2x is the fix if that matters more than the request count.
+- **One hostname**, not a/b/c/d subdomains, so there is no `subdomains` option.
+
+The tiles are muted toward the paper palette by a filter on `.leaflet-tile-pane`
+in `globals.css`. OSM's standard style is more saturated than Voyager was, so
+those values were retuned — by reasoning rather than by eye, since tile hosts
+were unreachable from the environment the switch was made in. Nudge them if the
+map reads too warm or too grey.
+
+### Changing provider
+
+Two places, and both are required:
+
+1. `components/SiteMap.tsx` — the URL and the attribution.
+2. `public/sw.js` — `TILE_HOSTS`, or the offline tile cache silently stops
+   matching and offline map coverage disappears.
+
+Bump `VERSION` in `sw.js` at the same time. That is what retires the old tile
+cache; without it, a cache-first handler keeps serving the previous provider's
+tiles to anyone who had already opened the app — which is exactly how the CARTO
+watermarks would have lived on past this switch.
 
 ## Data notes
 
@@ -226,7 +268,7 @@ sync. Three caches, each with the strategy that request deserves:
 | --- | --- | --- |
 | `shell` | the `/` document, `offline.html` | Network-first |
 | `static` | `/_next/static/**` and other same-origin assets | Cache-first when hashed, else stale-while-revalidate |
-| `tiles` | CARTO basemap tiles | Cache-first, LRU-capped at 500 |
+| `tiles` | basemap tiles | Cache-first, LRU-capped at 500 |
 
 So after one online visit: the app opens with no network, all 21 sites and the
 coverage data are there (they are baked into the bundle, not fetched), and the

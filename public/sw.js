@@ -12,13 +12,15 @@
  *   static  /_next/static/** and other same-origin assets. Cache-first for the
  *           hashed ones (the hash changes when the bytes do, so a stale hit is
  *           impossible), stale-while-revalidate for the rest.
- *   tiles   CARTO basemap tiles. Cache-first with an LRU cap, which is what
- *           makes a previously-visited area still draw with no network.
+ *   tiles   basemap tiles. Cache-first with an LRU cap, which is what makes a
+ *           previously-visited area still draw with no network.
  *
  * Bump VERSION to retire every cache at once on the next activation.
  */
 
-const VERSION = "v1";
+// v2 dropped the v1 tile cache, which held CARTO's "API KEY REQUIRED"
+// placeholders from before the basemap moved to OpenStreetMap.
+const VERSION = "v2";
 
 const SHELL_CACHE = `lantern-maps-shell-${VERSION}`;
 const STATIC_CACHE = `lantern-maps-static-${VERSION}`;
@@ -38,7 +40,13 @@ const PRECACHE_URLS = [
   "/icons/icon-512.png",
 ];
 
-const TILE_HOST_SUFFIX = ".basemaps.cartocdn.com";
+/*
+ * Must match the tile provider in components/SiteMap.tsx — an exact hostname
+ * rather than a suffix, so this cannot be widened by accident to anything else
+ * served under the same domain. Changing provider there means changing this too,
+ * or tiles quietly stop being cached and offline map coverage disappears.
+ */
+const TILE_HOSTS = ["tile.openstreetmap.org"];
 
 /*
  * Tiles come back opaque, because Leaflet requests them through <img> without
@@ -138,7 +146,7 @@ self.addEventListener("message", (event) => {
 });
 
 function isTileRequest(url) {
-  return url.hostname.endsWith(TILE_HOST_SUFFIX);
+  return TILE_HOSTS.includes(url.hostname);
 }
 
 /** Content-hashed by the build, so the bytes behind a URL never change. */

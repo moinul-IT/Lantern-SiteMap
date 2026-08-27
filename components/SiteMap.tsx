@@ -21,11 +21,21 @@ import { clusterShapes } from "@/lib/cluster-shape";
 import type { Office, Place, Site } from "@/lib/sites";
 import type { Located } from "@/lib/geo";
 
-const CARTO_VOYAGER =
-  "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-const CARTO_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-  '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+/*
+ * Basemap tiles. This was CARTO's Voyager endpoint until it stopped being
+ * keyless and began stamping "API KEY REQUIRED" across every tile; OSM's own
+ * server needs no key, so the app still deploys with zero configuration.
+ *
+ * No `subdomains` or `detectRetina` because this endpoint has neither: one
+ * hostname, and no @2x tiles, so retina detection would just fetch z+1 tiles to
+ * scale down — four times the requests against a free community service.
+ *
+ * The OSM Tile Usage Policy applies, and changing provider means changing
+ * TILE_HOSTS in public/sw.js too. See "Basemap tiles" in the README.
+ */
+const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+const OSM_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 const NYC_FALLBACK: L.LatLngExpression = [40.762, -73.91];
 
@@ -328,12 +338,7 @@ export default function SiteMap({
       tapHold={false}
       className="h-full w-full"
     >
-      <TileLayer
-        url={CARTO_VOYAGER}
-        attribution={CARTO_ATTRIBUTION}
-        subdomains="abcd"
-        detectRetina
-      />
+      <TileLayer url={OSM_TILES} attribution={OSM_ATTRIBUTION} maxZoom={19} />
       <ZoomControl position="bottomright" />
       <FitToSites sites={fitTargets} fitToken={fitToken} />
       <FlyToSelected

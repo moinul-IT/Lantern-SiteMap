@@ -197,9 +197,18 @@ body {
   outline: none;
 }
 
-/* Mute CARTO Voyager toward the warm paper palette */
+/*
+ * Mute the basemap toward the warm paper palette.
+ *
+ * Retuned when the tiles moved from CARTO Voyager to OpenStreetMap's standard
+ * style, which is a good deal more saturated — strong greens for parks, sharp
+ * blues for water — so the old values under-corrected it. These are reasoned
+ * rather than eyeballed: tile hosts are unreachable from the environment this
+ * was changed in, so nudge them if the map reads too warm or too grey on a real
+ * screen. Nothing else depends on them.
+ */
 .leaflet-tile-pane {
-  filter: saturate(0.78) sepia(0.13) brightness(1.02) contrast(0.96);
+  filter: saturate(0.62) sepia(0.2) brightness(1.04) contrast(0.93);
 }
 
 .leaflet-control-attribution {
