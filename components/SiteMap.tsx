@@ -5,12 +5,13 @@ import {
   MapContainer,
   Marker,
   Polygon,
-  TileLayer,
   Tooltip,
   ZoomControl,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import { setWorkerUrl } from "maplibre-gl";
+import { maplibreGL } from "@maplibre/maplibre-gl-leaflet";
 import {
   clusterBadgeIcon,
   officeIcon,
@@ -18,24 +19,33 @@ import {
   type ColorMode,
 } from "@/lib/marker";
 import { clusterShapes } from "@/lib/cluster-shape";
+import { basemapAttribution, basemapStyle } from "@/lib/basemap-style";
 import type { Office, Place, Site } from "@/lib/sites";
 import type { Located } from "@/lib/geo";
 
 /*
- * Basemap tiles. This was CARTO's Voyager endpoint until it stopped being
- * keyless and began stamping "API KEY REQUIRED" across every tile; OSM's own
- * server needs no key, so the app still deploys with zero configuration.
+ * Tell MapLibre where its worker lives.
  *
- * No `subdomains` or `detectRetina` because this endpoint has neither: one
- * hostname, and no @2x tiles, so retina detection would just fetch z+1 tiles to
- * scale down — four times the requests against a free community service.
+ * Left alone it derives the URL from `import.meta.url` and asks for a
+ * `maplibre-gl-worker.mjs` sitting next to itself — true in the published
+ * package, false once a bundler has rewritten the module into
+ * `/_next/static/chunks/…`. Letting the bundler emit the worker instead does
+ * not help: it is copied out as an opaque asset and the sibling module it
+ * imports is not, so the worker 404s either way.
  *
- * The OSM Tile Usage Policy applies, and changing provider means changing
- * TILE_HOSTS in public/sw.js too. See "Basemap tiles" in the README.
+ * Either way the failure is silent, which is what makes it worth this comment.
+ * Tiles are parsed in that worker, so without it the map keeps its canvas,
+ * resolves its style, and never decodes a single tile — a blank basemap with
+ * the pins still floating on it and nothing in the console but a stray
+ * MIME-type warning.
+ *
+ * scripts/copy-maplibre-worker.mjs puts the worker and its sibling in
+ * public/maplibre/ on `predev`/`prebuild`, where the relative import between
+ * them resolves the way the package intended.
+ *
+ * Must run before the first Map is constructed, hence module scope.
  */
-const OSM_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
-const OSM_ATTRIBUTION =
-  '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
 const NYC_FALLBACK: L.LatLngExpression = [40.762, -73.91];
 
@@ -263,36 +273,155 @@ function LabelDeclutter({
 }
 
 /**
- * Keeps Leaflet's internal size in sync. The ResizeObserver covers layout
- * changes; the orientation/resize listeners cover mobile browsers that rotate or
- * collapse their URL bar without the container box changing in time, which is
- * what leaves the map rendering half-blank.
+ * Keeps Leaflet's internal size in sync with its container.
+ *
+ * When the two disagree, Leaflet lays tiles and markers out for the size it
+ * *thinks* it has and leaves the rest of the container painted in the bare
+ * `.leaflet-container` background — the blank band the map appears to stop at.
+ *
+ * The ResizeObserver covers ordinary layout changes. The rest covers the cases
+ * it misses, which is where an installed PWA gets into trouble:
+ *
+ *   - `visibilitychange`/`pageshow` — resize callbacks are throttled or dropped
+ *     entirely while a document is hidden, and an installed app spends most of
+ *     its life backgrounded. Relaunching it from the home screen restores a page
+ *     that was last measured against different chrome (a status bar that is now
+ *     a different height, a keyboard that has since gone away), with no resize
+ *     event on the way back in. This is the one that fixes it.
+ *   - orientation and viewport resize — mobile browsers rotate or collapse their
+ *     URL bar without the container box changing in the same frame.
  */
 function ResizeWatcher() {
   const map = useMap();
 
   useEffect(() => {
     const container = map.getContainer();
-    const refresh = () => map.invalidateSize({ animate: false });
+
+    // Cheap enough to call on every visibility flip, but not free: it forces
+    // layout and redraws every tile, so skip it when nothing actually moved.
+    const refresh = () => {
+      const size = map.getSize();
+      if (
+        size.x === container.clientWidth &&
+        size.y === container.clientHeight
+      ) {
+        return;
+      }
+      map.invalidateSize({ animate: false });
+    };
+
+    // A settling pass: the box is often still the old one on the event itself,
+    // whether that is an orientation change or a resume from the background.
+    // The handles are kept so a pending pass cannot fire at a map that has
+    // already been torn down, where reading the container would throw.
+    const pending = new Set<number>();
+    const refreshSoon = () => {
+      refresh();
+      for (const delay of [120, 400]) {
+        const id = window.setTimeout(() => {
+          pending.delete(id);
+          refresh();
+        }, delay);
+        pending.add(id);
+      }
+    };
 
     const observer = new ResizeObserver(refresh);
     observer.observe(container);
 
-    // Orientation changes settle a frame or two after the event fires.
-    const onOrientation = () => {
-      refresh();
-      window.setTimeout(refresh, 250);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshSoon();
     };
 
-    window.addEventListener("orientationchange", onOrientation);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pageshow", refreshSoon);
+    window.addEventListener("orientationchange", refreshSoon);
     window.addEventListener("resize", refresh);
     window.visualViewport?.addEventListener("resize", refresh);
 
+    // The first measurement can land before the safe-area insets resolve, which
+    // on an installed iOS app is exactly when the shell changes height.
+    refreshSoon();
+
     return () => {
+      for (const id of pending) window.clearTimeout(id);
       observer.disconnect();
-      window.removeEventListener("orientationchange", onOrientation);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pageshow", refreshSoon);
+      window.removeEventListener("orientationchange", refreshSoon);
       window.removeEventListener("resize", refresh);
       window.visualViewport?.removeEventListener("resize", refresh);
+    };
+  }, [map]);
+
+  return null;
+}
+
+/**
+ * Leaflet's own options, which are not MapLibre's — `maplibreGL()` forwards the
+ * whole object to `new maplibregl.Map()` but `L.setOptions` keeps it too, and
+ * Leaflet's attribution control reads `attribution` back off the layer.
+ */
+type BasemapOptions = Parameters<typeof maplibreGL>[0] & {
+  attribution: string;
+};
+
+/**
+ * The basemap: OpenFreeMap vector tiles rendered by MapLibre GL into a canvas
+ * that sits in Leaflet's tile pane, with every marker, tooltip and cluster
+ * outline still drawn by Leaflet on top. See lib/basemap-style.ts for why this
+ * is vector rather than a raster TileLayer.
+ *
+ * The GL map is a renderer, not a map: `interactive` stays at the plugin's
+ * default of false so Leaflet keeps sole ownership of dragging, zooming and
+ * every gesture the markers depend on.
+ */
+function VectorBasemap() {
+  const map = useMap();
+
+  useEffect(() => {
+    const options: BasemapOptions = {
+      style: basemapStyle,
+      attribution: basemapAttribution,
+    };
+
+    const layer = maplibreGL(options);
+    layer.addTo(map);
+
+    const gl = layer.getMaplibreMap();
+
+    // A basemap that fails silently is how this shipped blank once already —
+    // an unreachable tile host or a style the renderer rejects both leave a
+    // cream rectangle with the pins floating on it and nothing in the console.
+    gl.on("error", (event) => {
+      console.error("[basemap]", event.error ?? event);
+    });
+
+    /*
+     * Recover a style that never loaded.
+     *
+     * Individual tiles are retried as you pan, but the style itself is not: if
+     * the very first request — the TileJSON — fails, MapLibre gives up for the
+     * life of the map and no amount of panning brings the basemap back. An
+     * installed app launched from a home screen before the network is up hits
+     * exactly that, and reloading the page is not something anyone should have
+     * to work out. Re-setting the style once connectivity returns starts it
+     * over; if it did load, this never fires.
+     */
+    let styleLoaded = false;
+    const onLoad = () => {
+      styleLoaded = true;
+    };
+    const onOnline = () => {
+      if (!styleLoaded) gl.setStyle(basemapStyle);
+    };
+
+    gl.on("load", onLoad);
+    window.addEventListener("online", onOnline);
+
+    return () => {
+      window.removeEventListener("online", onOnline);
+      layer.remove();
     };
   }, [map]);
 
@@ -338,7 +467,7 @@ export default function SiteMap({
       tapHold={false}
       className="h-full w-full"
     >
-      <TileLayer url={OSM_TILES} attribution={OSM_ATTRIBUTION} maxZoom={19} />
+      <VectorBasemap />
       <ZoomControl position="bottomright" />
       <FitToSites sites={fitTargets} fitToken={fitToken} />
       <FlyToSelected

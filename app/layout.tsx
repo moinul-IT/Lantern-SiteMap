@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import PwaChrome from "@/components/PwaChrome";
 import "leaflet/dist/leaflet.css";
+// Positions the GL canvas the vector basemap draws into. Loaded here rather
+// than in SiteMap so it lands in the initial stylesheet with Leaflet's, instead
+// of arriving with the lazy map chunk after the first tiles have painted.
+import "maplibre-gl/dist/maplibre-gl.css";
 import "./globals.css";
 
 const fraunces = Fraunces({

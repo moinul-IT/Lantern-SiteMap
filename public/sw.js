@@ -19,8 +19,10 @@
  */
 
 // v2 dropped the v1 tile cache, which held CARTO's "API KEY REQUIRED"
-// placeholders from before the basemap moved to OpenStreetMap.
-const VERSION = "v2";
+// placeholders from before the basemap moved to OpenStreetMap. v3 drops v2's,
+// which holds raster PNGs from before the basemap became vector — nothing reads
+// them any more, and they are the largest thing in storage.
+const VERSION = "v3";
 
 const SHELL_CACHE = `lantern-maps-shell-${VERSION}`;
 const STATIC_CACHE = `lantern-maps-static-${VERSION}`;
@@ -41,21 +43,41 @@ const PRECACHE_URLS = [
 ];
 
 /*
- * Must match the tile provider in components/SiteMap.tsx — an exact hostname
+ * Must match the tile provider in lib/basemap-style.ts — an exact hostname
  * rather than a suffix, so this cannot be widened by accident to anything else
  * served under the same domain. Changing provider there means changing this too,
  * or tiles quietly stop being cached and offline map coverage disappears.
  */
-const TILE_HOSTS = ["tile.openstreetmap.org"];
+const BASEMAP_HOST = "tiles.openfreemap.org";
 
 /*
- * Tiles come back opaque, because Leaflet requests them through <img> without
- * crossOrigin — so their real size is invisible to us and browsers pad opaque
- * entries when accounting for quota. Hence a deliberately modest cap: ~500
- * tiles is several screens' worth of panning at a few zoom levels, which covers
- * "the area I was just looking at" without growing without bound.
+ * The basemap host serves three very different things, and they want three
+ * different strategies:
+ *
+ *   /planet      the TileJSON naming the current planet build. One small
+ *                document, but the map cannot resolve a single tile URL without
+ *                it, so a cold offline launch dies here if it is not cached.
+ *                Stale-while-revalidate: a new build must be picked up, and
+ *                yesterday's answer is still a working map.
+ *   /planet/**   the vector tiles themselves. Unbounded in number, so
+ *                LRU-capped below.
+ *   /fonts/**    the glyph atlases every label is drawn from. A handful of
+ *   /sprites/**  small files, shared by the whole map at every zoom — put them
+ *                under the tile cap and a long pan would evict them, and the
+ *                offline map would come back with no labels on it.
  */
-const TILE_CACHE_LIMIT = 500;
+const TILE_JSON_PATH = "/planet";
+const TILE_PATH = "/planet/";
+const IMMUTABLE_BASEMAP_PATHS = ["/fonts/", "/sprites/"];
+
+/*
+ * MapLibre fetches vector tiles with CORS, so unlike the raster tiles this
+ * replaced their real size is visible to us and to the quota. ~400 of them is
+ * several screens' worth of panning across a few zoom levels — each covers four
+ * times the ground a 256px raster tile did — which is "the area I was just
+ * looking at" without growing without bound.
+ */
+const TILE_CACHE_LIMIT = 400;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -146,12 +168,32 @@ self.addEventListener("message", (event) => {
 });
 
 function isTileRequest(url) {
-  return TILE_HOSTS.includes(url.hostname);
+  return url.hostname === BASEMAP_HOST && url.pathname.startsWith(TILE_PATH);
 }
 
-/** Content-hashed by the build, so the bytes behind a URL never change. */
+/** The TileJSON. Note the exact match: `/planet/…` above is a tile, not this. */
+function isTileJson(url) {
+  return url.hostname === BASEMAP_HOST && url.pathname === TILE_JSON_PATH;
+}
+
+/** Glyphs and sprites: same host, but not subject to the tile cap. */
+function isImmutableBasemapAsset(url) {
+  return (
+    url.hostname === BASEMAP_HOST &&
+    IMMUTABLE_BASEMAP_PATHS.some((path) => url.pathname.startsWith(path))
+  );
+}
+
+/**
+ * The bytes behind the URL never change: `/_next/static/**` is content-hashed
+ * by the build, and the basemap's glyph and sprite files are versioned in their
+ * own paths by the tile host. The TileJSON is deliberately not in here — it is
+ * the one basemap document that has to be allowed to change.
+ */
 function isImmutable(url) {
-  return url.pathname.startsWith("/_next/static/");
+  return (
+    url.pathname.startsWith("/_next/static/") || isImmutableBasemapAsset(url)
+  );
 }
 
 /**
@@ -177,9 +219,9 @@ async function handleTile(event) {
   if (cached) return cached;
 
   const response = await fetch(event.request);
-  // An opaque response has status 0, so `ok` is false even when the tile is
-  // fine — type has to be checked instead. The cost is that an error tile is
-  // indistinguishable from a good one and can be cached; VERSION clears it.
+  // MapLibre requests tiles with CORS, so `ok` is meaningful and a 404 over
+  // water is never cached. The opaque branch is kept for any future provider
+  // fetched without it, where status is 0 and only `type` can be trusted.
   if (response.ok || response.type === "opaque") {
     await cache.put(event.request, response.clone());
     event.waitUntil(trimCache(TILE_CACHE, TILE_CACHE_LIMIT));
@@ -259,7 +301,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Cross-origin traffic other than tiles is none of our business.
+  // The TileJSON, glyphs and sprites all go through the static handler: it is
+  // stale-while-revalidate for the first and, via `isImmutable`, a straight
+  // cache hit for the other two once they have been fetched once.
+  if (isTileJson(url) || isImmutableBasemapAsset(url)) {
+    event.respondWith(handleStatic(event));
+    return;
+  }
+
+  // Cross-origin traffic other than the basemap is none of our business.
   if (url.origin !== self.location.origin) return;
 
   // RSC payloads vary by request header and are not interchangeable with the

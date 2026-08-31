@@ -198,17 +198,17 @@ body {
 }
 
 /*
- * Mute the basemap toward the warm paper palette.
- *
- * Retuned when the tiles moved from CARTO Voyager to OpenStreetMap's standard
- * style, which is a good deal more saturated — strong greens for parks, sharp
- * blues for water — so the old values under-corrected it. These are reasoned
- * rather than eyeballed: tile hosts are unreachable from the environment this
- * was changed in, so nudge them if the map reads too warm or too grey on a real
- * screen. Nothing else depends on them.
+ * The tile pane used to carry a `filter` that muted a raster basemap toward
+ * this palette. The basemap is vector now and is drawn *in* the palette (see
+ * lib/basemap-style.ts), so there is nothing left to correct — and a filter here
+ * would tax the GPU on every frame of every pan for the privilege of doing
+ * nothing.
  */
-.leaflet-tile-pane {
-  filter: saturate(0.62) sepia(0.2) brightness(1.04) contrast(0.93);
+
+/* MapLibre paints into a canvas that Leaflet positions; the canvas must not
+   catch pointer events or it would swallow every drag meant for the map. */
+.leaflet-gl-layer canvas {
+  pointer-events: none;
 }
 
 .leaflet-control-attribution {

@@ -55,20 +55,21 @@ netlify deploy --build --prod
 ```
 
 No environment variables are required — the basemap needs no key and all site
-coordinates are baked into the source. See **Basemap tiles** below before this
-gets a wider audience than a handful of staff.
+coordinates are baked into the source. See **Basemap** below.
 
 ## Structure
 
 ```
 app/
-  layout.tsx        fonts (Fraunces + Inter), Leaflet CSS, metadata, PWA chrome
+  layout.tsx        fonts (Fraunces + Inter), map CSS, metadata, PWA chrome
   page.tsx          server component, renders the explorer
   manifest.ts       web app manifest, served at /manifest.webmanifest
   globals.css       theme tokens, Leaflet overrides, marker/pin styles
+lib/
+  basemap-style.ts  MapLibre vector style for the basemap
 components/
   SiteExplorer.tsx  owns all state; switches between map and list views
-  SiteMap.tsx       Leaflet map, OSM tiles, fit-bounds, fly-to
+  SiteMap.tsx       Leaflet map, vector basemap, fit-bounds, fly-to
   DetailPanel.tsx   compact map-side panel with nearby sites and actions
   SiteDetailView.tsx  in-depth view (lazy-loaded) with View on map / directions
   SiteDetailSkeleton.tsx  shimmer placeholder while that chunk loads
@@ -97,46 +98,82 @@ public/
   icons/            manifest icons (SVG sources + rendered PNGs)
 ```
 
-## Basemap tiles
+## Basemap
 
-`https://tile.openstreetmap.org/{z}/{x}/{y}.png`, set in `components/SiteMap.tsx`.
+Vector tiles from **OpenFreeMap**, drawn by MapLibre GL into a canvas that sits
+in Leaflet's tile pane. Everything else on the map — markers, tooltips, cluster
+outlines — is still Leaflet, drawn on top.
 
-This was CARTO's Voyager raster endpoint, which **stopped being keyless** — it
-now answers with "API KEY REQUIRED" stamped across every tile, which is what the
-map looked like before this change. OpenStreetMap's own tile server needs no key
-and no account, so the app still deploys with zero configuration.
+Two files:
 
-Three consequences worth knowing:
+- `lib/basemap-style.ts` — the style: sources, colours, which features appear at
+  which zoom.
+- `components/SiteMap.tsx` — `VectorBasemap`, which mounts it as a Leaflet layer.
 
-- **The OSM Tile Usage Policy applies.** Heavy use is not permitted without
-  asking first. Fine for an internal tool with a handful of staff; if this ever
-  gets a wider audience, move to a keyed provider (Stadia, MapTiler,
-  Thunderforest, or CARTO with a key) rather than leaning harder on a free
-  community service.
-- **No `@2x` tiles**, so `detectRetina` is off. With no `{r}` in the URL it would
-  only fetch z+1 tiles and scale them down — quadrupling requests to sharpen a
-  phone screen. Tiles are softer on a 3x display as a result; a keyed provider
-  that serves @2x is the fix if that matters more than the request count.
-- **One hostname**, not a/b/c/d subdomains, so there is no `subdomains` option.
+No key, no account, no rate limit, and the planet is rebuilt from OSM roughly
+weekly. Nothing to configure to deploy.
 
-The tiles are muted toward the paper palette by a filter on `.leaflet-tile-pane`
-in `globals.css`. OSM's standard style is more saturated than Voyager was, so
-those values were retuned — by reasoning rather than by eye, since tile hosts
-were unreachable from the environment the switch was made in. Nudge them if the
-map reads too warm or too grey.
+### Why vector
+
+The pins are the content, and raster basemaps kept burying them:
+
+- **CARTO Voyager** was quiet enough, then stopped being keyless — it now stamps
+  "API KEY REQUIRED" across every tile.
+- **OSM standard tiles** need no key but draw every shop, cafe and bus stop at
+  full saturation. Muting them with a CSS `filter` on the tile pane helped the
+  colour and not the clutter.
+
+With vector tiles nothing is drawn unless a layer in the style asks for it, so
+the busyness is a choice rather than something to filter afterwards. There is no
+POI layer at all, no house numbers, no transit stops, no route shields. Colours
+are real style properties in the paper palette instead of a filter, and text
+stays sharp on a 3x screen — which the raster tiles never did, having no `@2x`.
+
+Two details in that file worth knowing before editing it:
+
+- **Zooms are written as Leaflet zooms** and converted by `z()`. MapLibre runs
+  one level below Leaflet, because its tiles are 512px against Leaflet's 256px
+  grid. Writing the raw MapLibre numbers would make every zoom in the style
+  disagree with `minZoom`/`maxZoom` and the fly-to targets in `SiteMap.tsx`.
+- **Settlement labels are capped by rank**, loosening as you zoom (`RANK_CAP`).
+  OpenMapTiles ranks New York 1 and Newark 7, then a wall of 11s and 12s arrives
+  at once — Yonkers, Hempstead, Levittown, Hicksville, Valley Stream. Drawing
+  that wall across the tri-state area was most of what made the map feel busy,
+  and none of it says anything about a site in the Bronx.
+
+### The worker
+
+MapLibre parses every tile in a Web Worker, and that worker is an ES module that
+imports a sibling, `maplibre-gl-shared.mjs`, by relative path. Bundlers copy the
+worker out as an opaque asset and do not follow that import, so the sibling 404s
+and the worker dies on its first line.
+
+`scripts/copy-maplibre-worker.mjs` copies both files into `public/maplibre/` on
+`predev` and `prebuild`, and `SiteMap.tsx` calls `setWorkerUrl()` to point at
+them. The directory is generated, gitignored, and never edited by hand.
+
+This failure is worth recognising because it is silent: the map keeps its
+canvas, resolves its style, and simply never decodes a tile. A blank basemap
+with the pins still floating on it, and nothing in the console but a stray
+MIME-type warning. `VectorBasemap` now logs MapLibre's own `error` events under
+`[basemap]` so the next one says something.
 
 ### Changing provider
 
-Two places, and both are required:
+Any OpenMapTiles-schema host is close to a drop-in. Three places, all required:
 
-1. `components/SiteMap.tsx` — the URL and the attribution.
-2. `public/sw.js` — `TILE_HOSTS`, or the offline tile cache silently stops
-   matching and offline map coverage disappears.
+1. `lib/basemap-style.ts` — `TILE_JSON`, `GLYPHS` and `basemapAttribution`.
+2. `public/sw.js` — `BASEMAP_HOST`, or the offline caches silently stop matching
+   and offline map coverage disappears.
+3. Bump `VERSION` in `sw.js`, which retires the old caches. Without it a
+   cache-first handler keeps serving the previous provider's tiles to anyone who
+   had already opened the app — exactly how the CARTO watermarks would have
+   outlived the switch away from them.
 
-Bump `VERSION` in `sw.js` at the same time. That is what retires the old tile
-cache; without it, a cache-first handler keeps serving the previous provider's
-tiles to anyone who had already opened the app — which is exactly how the CARTO
-watermarks would have lived on past this switch.
+Point `TILE_JSON` at a TileJSON document, not a tile template. OpenFreeMap
+serves each planet build from its own dated path, and the undated
+`/planet/{z}/{x}/{y}.pbf` answers **200 with an empty body** — so a hardcoded
+template fails silently in the same way the missing worker does.
 
 ## Data notes
 
@@ -267,13 +304,18 @@ sync. Three caches, each with the strategy that request deserves:
 | Cache | Contents | Strategy |
 | --- | --- | --- |
 | `shell` | the `/` document, `offline.html` | Network-first |
-| `static` | `/_next/static/**` and other same-origin assets | Cache-first when hashed, else stale-while-revalidate |
-| `tiles` | basemap tiles | Cache-first, LRU-capped at 500 |
+| `static` | `/_next/static/**`, other same-origin assets, and the basemap's glyphs and TileJSON | Cache-first when hashed, else stale-while-revalidate |
+| `tiles` | basemap vector tiles | Cache-first, LRU-capped at 400 |
 
 So after one online visit: the app opens with no network, all 21 sites and the
 coverage data are there (they are baked into the bundle, not fetched), and the
 map draws for any area already looked at. Tiles for an area never visited stay
 blank — nothing can be done about that without shipping a tile pack.
+
+The glyph atlases and the TileJSON live in `static` rather than `tiles` on
+purpose. They are a handful of small files the whole map depends on at every
+zoom, and under the tile cache's LRU cap a long pan would evict them — an
+offline map that comes back with no labels on it, or none at all.
 
 The shell is deliberately **network-first**, not cache-first: the HTML carries
 the hashed script URLs for a deploy, and a stale copy would ask for chunks that
