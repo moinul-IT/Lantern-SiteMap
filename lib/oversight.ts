@@ -45,7 +45,7 @@ export const VPS: Vp[] = [
   { id: "vp-jonathan", name: "Jonathan Castro", title: "Vice President" },
   { id: "vp-andrea", name: "Andrea Dogostiano", title: "Vice President" },
   { id: "vp-portia", name: "Portia Linton-Blake", title: "Vice President" },
-  { id: "vp-sasha", name: "Sasha Callam", title: "Vice President" },
+  { id: "vp-sasha", name: "Sasha Robinson", title: "Vice President" },
 ];
 
 export const VPS_BY_ID = new Map<VpId, Vp>(VPS.map((v) => [v.id, v]));

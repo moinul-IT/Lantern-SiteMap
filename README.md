@@ -475,7 +475,7 @@ cluster at once and per-site drift is impossible.
 
 | VP | Map cluster | Sites |
 | --- | --- | --- |
-| Sasha Callam | Cluster 1 | 4 |
+| Sasha Robinson | Cluster 1 | 4 |
 | Portia Linton-Blake | Cluster 2 | 4 |
 | Andrea Dogostiano | Cluster 3 | 4 |
 | Jonathan Castro | Cluster 4 | 5 |
