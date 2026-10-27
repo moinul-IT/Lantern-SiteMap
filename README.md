@@ -503,12 +503,15 @@ PD Program Director, APD Assistant Program Director, PA Program Assistant,
 DPO Director of Program Operations. DSS and Admin are still shown as initials
 because nobody has expanded them yet.
 
-Three rosters are shared across two buildings each (Cedar/Schafer,
-Lindenguild/Silverleaf, Amber/Leeward). Those sites show a "Program" field naming
-the pair, and the chart's per-building notes are kept on the individual roles.
+Three programs span two buildings each (Cedar/Schafer, Lindenguild/Silverleaf,
+Amber/Leeward). Those sites show a "Program" field naming the pair, and the
+chart's per-building notes are kept on the individual roles. Cedar/Schafer and
+Amber/Leeward share one roster outright; Lindenguild and Silverleaf share
+everything except the PD, who covers Lindenguild only, so Silverleaf shows no PD
+line at all.
 Hudson Bay appears on the chart as "Stillwell Avenue", shown as "Also known as".
 
-Vacancies are rendered in italic grey rather than hidden — 12 of the roles on the
+Vacancies are rendered in italic grey rather than hidden — 13 of the roles on the
 chart are vacant.
 
 The **Coverage** view manages both dimensions: VP portfolios (reassign one site,

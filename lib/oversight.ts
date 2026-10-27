@@ -12,9 +12,12 @@
  * Program staff and the Grant Analyst stay per site — they genuinely vary within
  * a cluster.
  *
- * Several sites share one staff roster (Cedar/Schafer, Lindenguild/Silverleaf,
- * Amber/Leeward). Those carry a `groupLabel` and the same staff list, with the
- * chart's per-building notes preserved on the individual roles.
+ * Several sites are one program across two buildings (Cedar/Schafer,
+ * Lindenguild/Silverleaf, Amber/Leeward) and carry a `groupLabel` saying so,
+ * with the chart's per-building notes preserved on the individual roles.
+ * Cedar/Schafer and Amber/Leeward share a single roster outright. Lindenguild
+ * and Silverleaf no longer do — only Lindenguild has a PD — so they share the
+ * parts that are genuinely common and differ in the one role that is not.
  */
 
 import { SITES_BY_ID, type ClusterId } from "./sites";
@@ -93,20 +96,41 @@ export type SiteTeam = {
 };
 
 const CEDAR_SCHAFER: StaffEntry[] = [
-  { role: "PD", name: "Trevor Griffiths" },
+  { role: "SPD", name: "Trevor Griffiths" },
   { role: "APD", name: "Richard Boykins" },
 ];
 
-const LINDENGUILD_SILVERLEAF: StaffEntry[] = [
-  { role: "SPD", name: "Yolanda Jones" },
+/*
+ * Lindenguild and Silverleaf are one program across two buildings, but their
+ * rosters are no longer identical: Claudette Stubbs is PD over Lindenguild
+ * only, so Silverleaf has no PD line at all — just the Senior PD above both.
+ * What the two genuinely share stays single-sourced here, so a change to
+ * Yolanda Jones or the support roles still reaches both buildings at once.
+ */
+const LINDENGUILD_SILVERLEAF_SPD: StaffEntry = {
+  role: "SPD",
+  name: "Yolanda Jones",
+};
+
+const LINDENGUILD_SILVERLEAF_SUPPORT: StaffEntry[] = [
+  { role: "APD", name: "Vacant" },
+  { role: "PA", name: "Ayesha Delk", note: "Silverleaf Hall" },
+];
+
+const LINDENGUILD: StaffEntry[] = [
+  LINDENGUILD_SILVERLEAF_SPD,
   {
     role: "PD",
     name: "Claudette Stubbs",
     note: "Lindenguild",
     email: "cstubbs@lanterncommunity.org",
   },
-  { role: "APD", name: "Vacant" },
-  { role: "PA", name: "Ayesha Delk", note: "Silverleaf Hall" },
+  ...LINDENGUILD_SILVERLEAF_SUPPORT,
+];
+
+const SILVERLEAF: StaffEntry[] = [
+  LINDENGUILD_SILVERLEAF_SPD,
+  ...LINDENGUILD_SILVERLEAF_SUPPORT,
 ];
 
 const AMBER_LEEWARD: StaffEntry[] = [
@@ -184,11 +208,11 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   "lindenguild-hall": {
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
-    staff: LINDENGUILD_SILVERLEAF,
+    staff: LINDENGUILD,
   },
   "silverleaf-hall": {
     groupLabel: "Lindenguild Hall / Silverleaf Hall",
-    staff: LINDENGUILD_SILVERLEAF,
+    staff: SILVERLEAF,
   },
   "vicinitas-hall": {
     staff: [
@@ -306,11 +330,8 @@ export const SITE_TEAM: Record<string, SiteTeam> = {
   },
   "hunterfly-trace": {
     staff: [
-      {
-        role: "PD",
-        name: "Paul Amoah",
-        email: "pamoah@lanterncommunity.org",
-      },
+      // The post is open; the previous holder's work address went with him.
+      { role: "PD", name: "Vacant" },
       { role: "PA", name: "Rubin Tejada" },
     ],
   },
