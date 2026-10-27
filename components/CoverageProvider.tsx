@@ -1,39 +1,22 @@
 "use client";
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import {
-  SEED_ASSIGNMENTS,
-  coverageClusterFor,
-  grantAnalystFor,
-  personById,
-  type Assignment,
-  type CoverageClusterId,
-  type Person,
-} from "@/lib/coverage";
-import {
-  contractForSite,
-  teamForSite,
-  vpById,
-  vpIdsForSite,
-  type SiteTeam,
-  type Vp,
-  type VpId,
-} from "@/lib/oversight";
-import { SITES } from "@/lib/sites";
+import { useContent } from "./ContentProvider";
+import type { Assignment, CoverageClusterId, Person } from "@/lib/coverage";
+import type { SiteTeam, Vp, VpId } from "@/lib/oversight";
+import type { Contract } from "@/lib/content/types";
 
 /**
- * Single place every site reads its oversight and procurement coverage from.
+ * Resolved oversight and procurement coverage, per site.
  *
- * Deliberately READ-ONLY. There is no backend, so an editing UI could only mutate
- * in-memory state that vanishes on refresh — worse than not offering it, because
- * it looks like the change was saved. Assignments change by editing
- * `lib/oversight.ts` and `lib/coverage.ts`, which are the record of the org chart.
+ * Reads everything from ContentProvider, so a snapshot saved by the content
+ * manager reaches every card here without any consumer changing. VPs still come
+ * from the cluster, procurement from the procurement cluster, and program staff
+ * plus Grant Analyst from the site itself — the inheritance rules live in
+ * `lib/content/index-content.ts` and hold whatever the content says.
  *
- * VPs come from the cluster (`CLUSTER_VPS`), procurement from the procurement
- * cluster, and program staff plus Grant Analyst from the site itself.
- *
- * This stays the seam for a future backend: swap the two sources below for fetched
- * data, add mutators here, and no consumer has to change.
+ * Read-only, like the layer under it: saving belongs with the editing UI, which
+ * has to sit behind the content-manager role.
  */
 
 type CoverageContextValue = {
@@ -52,13 +35,8 @@ export type SiteCoverage = {
   /** Every VP over this site, in chart order. */
   vps: Vp[];
   team: SiteTeam | null;
-  contract: "DOHMH" | "HASA" | null;
+  contract: Contract | null;
 };
-
-/** Derived from the cluster assignments, so it cannot disagree with them. */
-const SITE_VPS: Record<string, VpId[]> = Object.fromEntries(
-  SITES.map((site) => [site.id, vpIdsForSite(site.id)]),
-);
 
 const CoverageContext = createContext<CoverageContextValue | null>(null);
 
@@ -67,15 +45,22 @@ export default function CoverageProvider({
 }: {
   children: ReactNode;
 }) {
+  const content = useContent();
+
   const value = useMemo<CoverageContextValue>(() => {
+    // Derived from the cluster assignments, so it cannot disagree with them.
+    const siteVps: Record<string, VpId[]> = Object.fromEntries(
+      content.sites.map((site) => [site.id, content.vpIdsForSite(site.id)]),
+    );
+
     const coverageForSite = (siteId: string): SiteCoverage => {
-      const cluster = coverageClusterFor(siteId);
+      const cluster = content.coverageClusterFor(siteId);
       const shared = {
-        vps: (SITE_VPS[siteId] ?? [])
-          .map((id) => vpById(id))
+        vps: (siteVps[siteId] ?? [])
+          .map((id) => content.vpById(id))
           .filter((v): v is Vp => v !== null),
-        team: teamForSite(siteId),
-        contract: contractForSite(siteId),
+        team: content.teamForSite(siteId),
+        contract: content.contractForSite(siteId),
       };
 
       if (cluster === null) {
@@ -89,18 +74,20 @@ export default function CoverageProvider({
 
       return {
         cluster,
-        procurement: personById(SEED_ASSIGNMENTS[cluster].procurementId),
-        grantAnalyst: grantAnalystFor(siteId),
+        procurement: content.personById(
+          content.snapshot.coverageAssignments[cluster]?.procurementId ?? null,
+        ),
+        grantAnalyst: content.grantAnalystFor(siteId),
         ...shared,
       };
     };
 
     return {
-      assignments: SEED_ASSIGNMENTS,
-      siteVps: SITE_VPS,
+      assignments: content.snapshot.coverageAssignments,
+      siteVps,
       coverageForSite,
     };
-  }, []);
+  }, [content]);
 
   return (
     <CoverageContext.Provider value={value}>

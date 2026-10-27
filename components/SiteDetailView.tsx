@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
+import { useContent } from "./ContentProvider";
 import CoverageCard from "./CoverageCard";
 import DirectionsButton from "./DirectionsButton";
 import SitePhoto from "./SitePhoto";
@@ -10,7 +11,6 @@ import {
   BOROUGH_COLORS,
   CLUSTER_COLORS,
   OFFICE_COLORS,
-  SITES,
   clusterLabel,
   isOffice,
   type Place,
@@ -56,7 +56,8 @@ export default function SiteDetailView({
   const office = isOffice(place);
   const color = office ? OFFICE_COLORS : BOROUGH_COLORS[place.borough];
   const tag = office ? place.label : place.borough;
-  const nearby = nearestSites(place, SITES, 5);
+  const { sites } = useContent();
+  const nearby = nearestSites(place, sites, 5);
   const [recordNotice, setRecordNotice] = useState(false);
 
   return (

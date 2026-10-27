@@ -316,6 +316,17 @@ self.addEventListener("fetch", (event) => {
   // HTML at the same URL, so they are never cached or served from cache.
   if (url.searchParams.has("_rsc") || request.headers.has("RSC")) return;
 
+  /*
+   * The content API is never cached, in either direction.
+   *
+   * It carries whatever the content manager last saved, and a stale-while-
+   * revalidate hit here would show yesterday's org chart while quietly fetching
+   * today's — the exact failure the content layer exists to prevent. Letting it
+   * go straight to the network costs nothing offline either: the client falls
+   * back to the snapshot compiled into the build, which is always present.
+   */
+  if (url.pathname.startsWith("/api/")) return;
+
   // Dev-server plumbing (HMR, the error overlay) must never be intercepted.
   if (
     url.pathname.startsWith("/_next/webpack-hmr") ||

@@ -431,6 +431,40 @@ component falls back to that same block rather than a broken image.
 - **All 21 `photo` fields are `null`**, so every site currently shows the
   monogram placeholder.
 
+## Content: where the data lives
+
+Every view reads its records from **one place**, `components/ContentProvider.tsx`,
+which holds a `ContentSnapshot` — sites, the office, VPs, cluster assignments,
+program staff, contracts, procurement and Grant Analysts. Colours, role labels
+and the map style are *not* in it: those are design decisions in code, not
+records anyone maintains.
+
+The provider starts from `lib/content/seed.ts`, which is assembled from the
+`lib/*.ts` source files and compiled into the bundle, then asks `/api/content`
+for a saved snapshot and swaps it in if one comes back **newer** (by `version`).
+
+That order is deliberate, and it is what keeps the offline story intact: the app
+never waits on the network to draw the map. A cold launch with no signal still
+has all 21 sites, every roster and every assignment, because the fallback is the
+build itself rather than a cache that may or may not be warm. A snapshot is also
+only accepted if it passes a shape check — an HTML error page or a truncated
+document is ignored rather than emptying the map.
+
+`public/sw.js` deliberately does **not** cache `/api/`. A stale-while-revalidate
+hit there would show yesterday's org chart while quietly fetching today's, which
+is the exact failure this layer exists to prevent.
+
+### Why the seam moved
+
+The README used to call `CoverageProvider` "the backend seam: swap the sources
+for fetched data and no consumer changes". That was only half true.
+`CoverageAdmin` — the Coverage screen, the one a content manager edits from —
+imported `SITES`, `CLUSTER_VPS`, `PROGRAM_LEADERSHIP`, `PROCUREMENT_LEADERSHIP`
+and the per-site lookups straight from the modules, so a fetched snapshot would
+have reached every site card and not that screen. Five more components read
+`SITES` directly for the same reason. They all go through the provider now, and
+a test asserts the Coverage view follows a served snapshot.
+
 ## Procurement coverage
 
 Each **procurement cluster** carries one Procurement Team Member; every site in
@@ -447,11 +481,11 @@ not represented anywhere in the app.
 
 - `lib/coverage.ts` — people, the three procurement clusters, site→cluster
   mapping, per-site Grant Analyst, and pure lookups.
-- `components/CoverageProvider.tsx` — the single place sites read coverage from,
-  and **read-only on purpose**: with no backend, an editor could only change
-  in-memory state that resets on refresh, which reads as "saved" when nothing was.
-  Assignments change by editing the data files. **This is the backend seam:** swap
-  the sources for fetched data, add mutators here, and no consumer changes.
+- `components/CoverageProvider.tsx` — resolves coverage per site from the content
+  snapshot, and is still **read-only**: an editor that changes in-memory state
+  alone reads as "saved" when nothing was, so saving waits on the write API and
+  the content-manager role. Assignments change by editing the data files until
+  then. See **Content: where the data lives** for the layer underneath it.
 - `components/CoverageCard.tsx` — shown on the map panel (compact) and the
   in-depth view. Renders "Unassigned" when nobody is set, and nothing at all for
   places outside the org chart (the admin office).

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, type PanInfo } from "framer-motion";
+import { useContent } from "./ContentProvider";
 import CoverageCard from "./CoverageCard";
 import DirectionsButton from "./DirectionsButton";
 import SitePhoto from "./SitePhoto";
@@ -9,7 +10,6 @@ import { nearestSites, formatDistance } from "@/lib/geo";
 import {
   BOROUGH_COLORS,
   OFFICE_COLORS,
-  SITES,
   isOffice,
   type Place,
 } from "@/lib/sites";
@@ -57,7 +57,8 @@ export default function DetailPanel({
   const color = office ? OFFICE_COLORS : BOROUGH_COLORS[site.borough];
   const tag = office ? site.label : site.borough;
   // For the office this answers "which sites are closest to the office?".
-  const nearby = nearestSites(site, SITES, 3);
+  const { sites } = useContent();
+  const nearby = nearestSites(site, sites, 3);
   const isPhone = useIsPhone();
 
   useEffect(() => {

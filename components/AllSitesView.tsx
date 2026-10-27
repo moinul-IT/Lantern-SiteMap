@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { useContent } from "./ContentProvider";
 import { closestSite, formatDistance } from "@/lib/geo";
 import {
   BOROUGHS,
@@ -9,7 +10,6 @@ import {
   CLUSTER_COLORS,
   OFFICE_COLORS,
   SHELTER_COLORS,
-  SITES,
   clusterLabel,
   type Office,
   type Place,
@@ -95,6 +95,9 @@ export default function AllSitesView({
   onSelect,
   groupBy,
 }: Props) {
+  // Nearest-neighbour is measured against every site, not just the visible
+  // ones, so a filtered column can still name a neighbour it is hiding.
+  const { sites: allSites } = useContent();
   const columns = buildColumns(sites, office, groupBy);
 
   if (columns.length === 0) {
@@ -140,7 +143,7 @@ export default function AllSitesView({
             {column.places.map((place, rowIndex) => {
               // Nearest neighbour is measured against every site, not just the
               // ones passing the current filter.
-              const nearest = closestSite(place, SITES);
+              const nearest = closestSite(place, allSites);
               const active = place.id === selectedId;
 
               return (

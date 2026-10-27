@@ -6,6 +6,7 @@ import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import AllSitesView, { type GroupBy } from "./AllSitesView";
 import BoroughChips from "./BoroughChips";
 import CoverageAdmin from "./CoverageAdmin";
+import ContentProvider, { useContent } from "./ContentProvider";
 import CoverageProvider from "./CoverageProvider";
 import DetailPanel from "./DetailPanel";
 import GroupByToggle from "./GroupByToggle";
@@ -17,14 +18,7 @@ import SiteDetailSkeleton from "./SiteDetailSkeleton";
 import TitleBlock from "./TitleBlock";
 import ViewToggle, { type View } from "./ViewToggle";
 import { filterSites, matchesQuery, type BoroughFilter } from "@/lib/filter";
-import {
-  MAIN_OFFICE,
-  PLACES_BY_ID,
-  SITES,
-  countByBorough,
-  countByCluster,
-  shelterCount,
-} from "@/lib/sites";
+import { countByBorough, countByCluster, shelterCount } from "@/lib/sites";
 
 // Leaflet touches `window` at import time, so this must never render on the server.
 const SiteMap = dynamic(() => import("./SiteMap"), {
@@ -47,6 +41,10 @@ const SiteDetailView = dynamic(() => import("./SiteDetailView"), {
 const PANEL_WIDTH = 360;
 
 function SiteExplorerBody() {
+  // Sites and the office now come from ContentProvider, so a saved snapshot
+  // reaches the map, the list and the search without any of them changing.
+  const { sites: SITES, mainOffice: MAIN_OFFICE, placesById } = useContent();
+
   const [view, setView] = useState<View>("map");
   const [query, setQuery] = useState("");
   const [borough, setBorough] = useState<BoroughFilter>("All");
@@ -69,7 +67,7 @@ function SiteExplorerBody() {
 
   const visibleSites = useMemo(
     () => filterSites(SITES, query, borough),
-    [query, borough],
+    [SITES, query, borough],
   );
   const counts = useMemo(() => countByBorough(visibleSites), [visibleSites]);
   const clusterCounts = useMemo(
@@ -86,7 +84,7 @@ function SiteExplorerBody() {
       borough === "All" && matchesQuery(MAIN_OFFICE, query)
         ? MAIN_OFFICE
         : null,
-    [borough, query],
+    [MAIN_OFFICE, borough, query],
   );
 
   const visibleIds = useMemo(() => {
@@ -97,10 +95,10 @@ function SiteExplorerBody() {
 
   const selected =
     selectedId && visibleIds.has(selectedId)
-      ? (PLACES_BY_ID.get(selectedId) ?? null)
+      ? (placesById.get(selectedId) ?? null)
       : null;
 
-  const detailPlace = detailId ? (PLACES_BY_ID.get(detailId) ?? null) : null;
+  const detailPlace = detailId ? (placesById.get(detailId) ?? null) : null;
 
   /**
    * Selecting always reveals the place. Nearby links can point outside the
@@ -108,7 +106,7 @@ function SiteExplorerBody() {
    */
   const selectSite = useCallback(
     (id: string) => {
-      const place = PLACES_BY_ID.get(id);
+      const place = placesById.get(id);
       if (!place) return;
       const isOfficePlace = id === MAIN_OFFICE.id;
       if (
@@ -120,7 +118,7 @@ function SiteExplorerBody() {
       if (query && !matchesQuery(place, query)) setQuery("");
       setSelectedId(id);
     },
-    [borough, query],
+    [MAIN_OFFICE, placesById, borough, query],
   );
 
   /** Cluster mode and cluster grouping stay in step across both views. */
@@ -410,8 +408,10 @@ function SiteExplorerBody() {
  */
 export default function SiteExplorer() {
   return (
-    <CoverageProvider>
-      <SiteExplorerBody />
-    </CoverageProvider>
+    <ContentProvider>
+      <CoverageProvider>
+        <SiteExplorerBody />
+      </CoverageProvider>
+    </ContentProvider>
   );
 }

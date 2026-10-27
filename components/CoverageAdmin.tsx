@@ -2,35 +2,25 @@
 
 import { motion } from "framer-motion";
 import { useCoverage } from "./CoverageProvider";
-import {
-  COVERAGE_CLUSTERS,
-  PROCUREMENT_LEADERSHIP,
-  grantAnalystFor,
-  personById,
-  siteIdsInCoverageCluster,
-} from "@/lib/coverage";
-import {
-  CLUSTER_VPS,
-  PROGRAM_LEADERSHIP,
-  SHELTER_VPS,
-  vpById,
-} from "@/lib/oversight";
+import { useContent } from "./ContentProvider";
+import { COVERAGE_CLUSTERS } from "@/lib/coverage";
 import {
   CLUSTERS,
   CLUSTER_COLORS,
   SHELTER_COLORS,
-  SITES,
-  SITES_BY_ID,
   clusterLabel,
 } from "@/lib/sites";
 
 const EASE = [0.22, 0.61, 0.36, 1] as const;
 
 /**
- * Read-only reference for who covers what. There is no backend, so there are no
- * controls here — an editor could only change in-memory state that resets on
- * refresh, which reads as "saved" when nothing was. Assignments live in
- * `lib/oversight.ts` and `lib/coverage.ts`.
+ * Read-only reference for who covers what.
+ *
+ * Every record here comes from ContentProvider rather than the source modules,
+ * which it used to read directly — that made this screen, the one a content
+ * manager will edit from, the only place a saved snapshot would not have
+ * reached. Controls still wait on the write API and the content-manager role:
+ * an editor that only changes in-memory state reads as "saved" when nothing was.
  */
 export default function CoverageAdmin({
   onOpenSite,
@@ -38,6 +28,15 @@ export default function CoverageAdmin({
   onOpenSite: (siteId: string) => void;
 }) {
   const { assignments } = useCoverage();
+  const {
+    sites,
+    sitesById,
+    snapshot,
+    vpById,
+    personById,
+    grantAnalystFor,
+    siteIdsInCoverageCluster,
+  } = useContent();
 
   /**
    * One card per cluster, because the cluster is the unit a VP is assigned to.
@@ -50,20 +49,20 @@ export default function CoverageAdmin({
       title: clusterLabel(cluster),
       color: CLUSTER_COLORS[cluster].base,
       squared: true,
-      vps: [vpById(CLUSTER_VPS[cluster])].filter(
+      vps: [vpById(snapshot.clusterVps[cluster])].filter(
         (v): v is NonNullable<typeof v> => v !== null,
       ),
-      siteIds: SITES.filter((s) => s.cluster === cluster).map((s) => s.id),
+      siteIds: sites.filter((s) => s.cluster === cluster).map((s) => s.id),
     })),
     {
       key: "shelters",
       title: "Shelters",
       color: SHELTER_COLORS.base,
       squared: false,
-      vps: SHELTER_VPS.map((id) => vpById(id)).filter(
+      vps: snapshot.shelterVps.map((id) => vpById(id)).filter(
         (v): v is NonNullable<typeof v> => v !== null,
       ),
-      siteIds: SITES.filter((s) => s.cluster === null).map((s) => s.id),
+      siteIds: sites.filter((s) => s.cluster === null).map((s) => s.id),
     },
   ];
 
@@ -72,7 +71,7 @@ export default function CoverageAdmin({
       <Card delay={0}>
         <p className="eyebrow">Program leadership</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-          {PROGRAM_LEADERSHIP.map((person) => (
+          {snapshot.programLeadership.map((person) => (
             <li key={person.title} className="min-w-0">
               <p
                 className={`truncate text-sm font-medium ${person.name === "Vacant" ? "text-ink-faint italic" : "text-ink"}`}
@@ -140,7 +139,7 @@ export default function CoverageAdmin({
               <p className="eyebrow mt-4 block">Sites inheriting this</p>
               <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
                 {group.siteIds.map((siteId) => {
-                  const site = SITES_BY_ID.get(siteId);
+                  const site = sitesById.get(siteId);
                   if (!site) return null;
                   return (
                     <li key={siteId}>
@@ -165,7 +164,7 @@ export default function CoverageAdmin({
       <Card delay={0.08}>
         <p className="eyebrow">Procurement leadership</p>
         <ul className="mt-3 grid gap-3 sm:grid-cols-3">
-          {PROCUREMENT_LEADERSHIP.map((id) => {
+          {snapshot.procurementLeadership.map((id) => {
             const person = personById(id);
             if (!person) return null;
             return (
@@ -223,7 +222,7 @@ export default function CoverageAdmin({
                     row rather than as a cluster-level field. */}
                 <ul className="mt-2 divide-y divide-hairline border-t border-hairline">
                   {siteIds.map((siteId) => {
-                    const site = SITES_BY_ID.get(siteId);
+                    const site = sitesById.get(siteId);
                     if (!site) return null;
                     return (
                       <li key={siteId}>
