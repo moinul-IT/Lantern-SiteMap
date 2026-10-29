@@ -1,7 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-# Any depth: the Functions app in api/ has its own.
+# Any depth, not just the root.
 node_modules/
 /.pnp
 .pnp.*

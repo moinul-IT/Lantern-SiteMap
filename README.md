@@ -1,7 +1,8 @@
 # Lantern Maps
 
 Internal map of Lantern Community Services supportive-housing sites across NYC.
-Read-only, hardcoded data, no database, no auth. Installable as a PWA.
+Content is editable in the app by signed-in content managers and stored in
+Azure. Installable as a PWA, and the map still works offline.
 
 ## Run locally
 
@@ -25,47 +26,110 @@ npm run build
 npm run lint
 ```
 
+```bash
+npm test
+```
+
+`npm test` covers the server's own logic — chunked storage, the concurrency
+rule, the role gate and the snapshot validator — against a stand-in for Table
+Storage, so it needs no Azure account.
+
+### Running the editor locally
+
+`/manage` needs a signed-in content manager, and there is no Entra ID in front
+of a local `next dev`. In development the app trusts an
+`x-ms-client-principal` header, which is what Azure injects after sign-in, so
+you can mint one yourself:
+
+```bash
+node -e 'console.log(Buffer.from(JSON.stringify({auth_typ:"aad",role_typ:"roles",name_typ:"preferred_username",claims:[{typ:"preferred_username",val:"you@lanterncommunity.org"},{typ:"roles",val:"contentmanager"}]})).toString("base64"))'
+```
+
+Send it as `x-ms-client-principal` with any browser extension that sets request
+headers. In production that header is only believed when something in front of
+the server is known to be authenticating — see **Why the header can be trusted**
+below.
+
+By default the app expects a storage account. To run without one:
+
+```bash
+CONTENT_STORE=memory npm run dev
+```
+
+Saves then live in the server process and vanish when it restarts, which is why
+that setting is refused in production unless `ALLOW_MEMORY_STORE=1` says so
+deliberately.
+
 ## Deploy
 
-The site is a **static export** (`out/`) plus an **Azure Functions API** (`api/`),
-deployed together to one Azure Static Web App. The management tool ships inside
-the same app at `/manage`, so there is one thing to deploy and one place content
-is edited.
+The site is a **Next.js server** — not a static export — deployed to one Azure
+**App Service** (Linux, Node 22). The server renders the current content into
+each page, serves the content API, and checks who is signed in, all in one
+process. The management tool ships inside the same app at `/manage`, so there is
+one thing to deploy and one place content is edited.
+
+It is hosted rather than exported because people edit it. An exported build
+freezes the content as it stood when the build ran: a correction would not
+appear until someone redeployed. Here the next page load already has it.
 
 ### What to create in Azure, once
 
-1. **Storage account** → a Table called `content` (the API creates it on first
+1. **Storage account** → a Table called `content` (the app creates it on first
    save if it is missing). Any region, Standard LRS is ample: the whole document
    is about 35KB.
-2. **Static Web App**, created from this GitHub repo. Azure adds the
-   `AZURE_STATIC_WEB_APPS_API_TOKEN` secret to the repo and commits a workflow;
-   this repo already has one at `.github/workflows/azure-static-web-apps.yml`,
-   so delete whichever it adds and keep this one. Build settings come from the
-   workflow, not the portal.
-3. **Application settings** on the Static Web App → add
-   `AZURE_STORAGE_CONNECTION_STRING`, the storage account's connection string.
-   It is the one secret, and it belongs here rather than in the repo.
-4. **Authentication** → the built-in Entra ID (`aad`) provider. Nothing to
-   configure in code; `/.auth/login/aad` exists as soon as the app does.
-5. **Role assignment** → invite each content manager and give them the role
-   `contentmanager`, spelled exactly. Everyone else can read the site and will
-   be refused the editor.
-
-`staticwebapp.config.json` carries the rest: which routes need the role, the
-service-worker cache headers, and the MIME types.
+2. **App Service** → Linux, Node 22 LTS. B1 is enough; it is an internal tool.
+3. **Startup command** → `node server.js`, under Settings → Configuration.
+   This one is not optional. The deployed folder carries a `package.json` whose
+   `start` script is `next start`, which is wrong for a standalone build, and
+   App Service runs `npm start` by default. Without the startup command the
+   site will not boot.
+4. **Environment variables** → add `AZURE_STORAGE_CONNECTION_STRING`, the
+   storage account's connection string. It is the one secret, and it belongs
+   here rather than in the repo.
+5. **Authentication** ("Easy Auth") → add Microsoft Entra ID as the identity
+   provider, and set unauthenticated requests to be **allowed** rather than
+   redirected: the map itself is open to everyone on the network, and only
+   `/manage` and saving require signing in. Nothing to configure in code;
+   `/.auth/login/aad` exists as soon as authentication does.
+6. **App roles** → in the app registration, create an app role with the value
+   `contentmanager`, spelled exactly, and assign it to each content manager.
+   Everyone else can read the site and will be refused the editor.
+7. **Publish profile** → Get publish profile on the App Service, and paste the
+   file into the repository secret `AZURE_WEBAPP_PUBLISH_PROFILE`.
 
 ### Deploying
 
-Push to `main`. The workflow builds the site, runs lint and the API tests, and
-uploads `out/` and `api/` together. Pull requests get their own preview
-environment, torn down on close.
+Push to `main`. The workflow at `.github/workflows/azure-app-service.yml` runs
+lint, typecheck and the tests, builds the standalone server, copies `public/`
+and `.next/static` into it (the standalone output leaves them out on purpose,
+and the site loads without its CSS, icons and service worker if they are
+missing), and uploads the result.
 
-### While the move happens
+### Why the header can be trusted
 
-`netlify.toml` still points at `out/`, so the existing Netlify deploy keeps
-working and serves the site from the same build. It has no API, so the content
-manager and saved content only exist on the Azure side. Once DNS points at the
-Static Web App, that file and the Netlify site can go.
+Easy Auth authenticates at the edge and passes the result down in an
+`x-ms-client-principal` header, stripping any copy the caller sent. That is the
+only reason the app can believe it without verifying a token — and it holds
+only while the app is unreachable except through App Service.
+
+So the server refuses to believe the header at all unless it can tell something
+is authenticating in front of it: App Service's own `WEBSITE_AUTH_ENABLED`, or
+`TRUST_AUTH_HEADER=1` set by hand for another host that does the same job. A
+deployment that forgets to turn authentication on fails closed — nobody can
+sign in or save — rather than open.
+
+### Moving off Netlify
+
+This is the branch that stops being a static site, so the Netlify deploy cannot
+serve it: `netlify.toml` and its `out/` directory are gone. Cut over in this
+order, or the site goes dark in between:
+
+1. Deploy to App Service and check it on its `azurewebsites.net` address.
+2. Point DNS at App Service.
+3. Merge this branch to `main` and delete the Netlify site.
+
+Until step 3, `main` still builds the static export and Netlify keeps serving
+it, unchanged.
 
 ## Structure
 
@@ -104,13 +168,16 @@ lib/
   filter.ts         search + borough filtering
   marker.ts         borough-coloured divIcon builder
   directions.ts     Apple/Google directions URLs + the remembered choice
-api/                Azure Functions, deployed as the Static Web App's API
-  src/functions/content.js  GET the snapshot (anyone), PUT it (content managers)
-  src/functions/me.js       who is signed in, and may they edit
-  src/lib/store.js          Table Storage: one chunked, versioned document
-  src/lib/validate.js       refuses content that would break the site
-  src/lib/principal.js      reads the role from the SWA principal header
-  test/api.test.js          runs with `npm test` in api/
+  server/           server-only; never reaches the browser
+    content-store.ts  Table Storage: one chunked, versioned document
+    validate.ts       refuses content that would break the site
+    principal.ts      who is signed in, from the Easy Auth header
+    load-content.ts   the snapshot a page is rendered with
+app/api/
+  content/route.ts    GET the snapshot (anyone), PUT it (content managers)
+  me/route.ts         who is signed in, and may they edit
+test/
+  server.test.ts      runs with `npm test`
 public/
   sw.js             service worker: app shell, static assets, map tiles
   offline.html      standalone fallback for a cold launch with no network
@@ -452,8 +519,8 @@ component falls back to that same block rather than a broken image.
 
 ## Managing content
 
-`/manage`, inside the same Static Web App as the site it edits, restricted to
-the `contentmanager` role.
+`/manage`, served by the same app as the site it edits, restricted to the
+`contentmanager` role.
 
 It edits one site at a time — name, address, borough, type, map cluster, photo,
 and the coordinates behind a disclosure, since those were geocoded by hand and
@@ -464,21 +531,22 @@ own names and titles.
 
 Three things it does on purpose:
 
-- **It starts from what is published**, not from the build. ContentProvider
-  hydrates a moment after mount, so the editor waits for that before seeding its
-  draft — otherwise a manager would be editing the version in the bundle and
-  overwrite whatever was saved since.
+- **It starts from what is published**, not from the build. The server reads
+  the current snapshot and renders the editor with it, so the first thing on
+  screen is already what is stored — otherwise a manager would be editing the
+  version in the bundle and overwrite whatever was saved since.
 - **It refuses to merge.** Every save carries the version it started from, and
   the API rejects it if anything was saved meanwhile. Accepting would erase the
   other person's change with neither of them knowing. The editor says so and
   asks for a reload.
-- **The role is checked twice.** `staticwebapp.config.json` keeps non-managers
-  off the route, and `PUT /api/content` checks the principal again before
-  writing. The route rule hides the page; the API check is what protects the
-  data, and it is the one that would still hold if a rule were widened by
-  accident.
+- **The role is checked twice.** The page itself refuses to render the editor
+  without the role — answering 401 if nobody is signed in, 403 if they are but
+  have not been granted it — and `PUT /api/content` checks the principal again
+  before writing. The page check hides the editor; the API check is what
+  protects the data, and it is the one that still holds if someone calls the
+  endpoint directly.
 
-The API also validates before storing: no sites, a site without coordinates or
+The route also validates before storing: no sites, a site without coordinates or
 outside New York, a duplicate id, a cluster pointing at a VP that does not
 exist, an invalid staff role, an empty name — all refused with the reasons, and
 nothing written. Once a bad document is in the table every visitor gets it, so
@@ -493,8 +561,8 @@ a half-applied write that moved a site into a cluster but not its VP would be
 worse than a rejected one. The row also keeps `version` and who saved it.
 
 Nothing saved yet is the normal state of a new deployment: `GET /api/content`
-answers 404 and the site runs on the snapshot compiled into its build until a
-content manager saves for the first time. That first save is also what seeds the
+answers 404, the server renders pages from the snapshot compiled into the build,
+and it stays that way until a content manager saves for the first time. That first save is also what seeds the
 table — there is no separate seeding step.
 
 ## Content: where the data lives
@@ -505,16 +573,21 @@ program staff, contracts, procurement and Grant Analysts. Colours, role labels
 and the map style are *not* in it: those are design decisions in code, not
 records anyone maintains.
 
-The provider starts from `lib/content/seed.ts`, which is assembled from the
-`lib/*.ts` source files and compiled into the bundle, then asks `/api/content`
-for a saved snapshot and swaps it in if one comes back **newer** (by `version`).
+The server reads the stored snapshot and renders the page with it, so the
+content arrives in the HTML already current. The provider then falls back, in
+order, to the newest snapshot this device has seen (kept in `localStorage`) and
+finally to `lib/content/seed.ts`, which is assembled from the `lib/*.ts` source
+files and compiled into the bundle. After mounting it still asks
+`/api/content` and swaps in anything **newer** by `version` — which matters
+because the service worker can serve a cached copy of the HTML, and that copy
+carries the content it had when it was cached.
 
 That order is deliberate, and it is what keeps the offline story intact: the app
 never waits on the network to draw the map. A cold launch with no signal still
-has all 21 sites, every roster and every assignment, because the fallback is the
-build itself rather than a cache that may or may not be warm. A snapshot is also
-only accepted if it passes a shape check — an HTML error page or a truncated
-document is ignored rather than emptying the map.
+has all 21 sites, every roster and every assignment, because the fallback is a
+snapshot already on the device rather than a cache that may or may not be warm.
+A snapshot is also only accepted if it passes a shape check — an HTML error page
+or a truncated document is ignored rather than emptying the map.
 
 `public/sw.js` deliberately does **not** cache `/api/`. A stale-while-revalidate
 hit there would show yesterday's org chart while quietly fetching today's, which

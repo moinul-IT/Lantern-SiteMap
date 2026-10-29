@@ -18,6 +18,7 @@ import SiteDetailSkeleton from "./SiteDetailSkeleton";
 import TitleBlock from "./TitleBlock";
 import ViewToggle, { type View } from "./ViewToggle";
 import { filterSites, matchesQuery, type BoroughFilter } from "@/lib/filter";
+import type { ContentSnapshot } from "@/lib/content/types";
 import { countByBorough, countByCluster, shelterCount } from "@/lib/sites";
 
 // Leaflet touches `window` at import time, so this must never render on the server.
@@ -405,10 +406,18 @@ function SiteExplorerBody() {
 /**
  * The provider wraps every view so a cluster assignment edited in Coverage is
  * reflected on the map panels and the in-depth views immediately.
+ *
+ * `initialContent` is the snapshot the server read for this request. Passing it
+ * in rather than letting the client fetch it is what puts today's content in
+ * the first paint instead of the build's.
  */
-export default function SiteExplorer() {
+export default function SiteExplorer({
+  initialContent,
+}: {
+  initialContent?: ContentSnapshot;
+}) {
   return (
-    <ContentProvider>
+    <ContentProvider initial={initialContent}>
       <CoverageProvider>
         <SiteExplorerBody />
       </CoverageProvider>

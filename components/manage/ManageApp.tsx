@@ -14,7 +14,15 @@ const STAFF_ROLES = Object.keys(STAFF_ROLE_LABELS) as StaffRole[];
 const SITE_TYPES: SiteType[] = ["Supportive Housing", "Shelter"];
 const COVERAGE_CLUSTERS: CoverageClusterId[] = [1, 2, 3];
 
-type Me = { signedIn: boolean; name: string | null; canEdit: boolean };
+export type Me = {
+  signedIn: boolean;
+  name: string | null;
+  canEdit: boolean;
+  /* Where the platform's sign-in and sign-out endpoints live. Sent by the
+     server rather than hard-coded here, so moving providers is one change. */
+  loginUrl?: string;
+  logoutUrl?: string;
+};
 
 type SaveState =
   | { kind: "idle" }
@@ -44,16 +52,23 @@ function withStaff(draft: ContentSnapshot, siteId: string, staff: StaffEntry[]) 
   };
 }
 
-export default function ManageApp() {
+export default function ManageApp({ initialMe }: { initialMe?: Me }) {
   const content = useContent();
-  const [me, setMe] = useState<Me | null>(null);
+  /*
+   * The server already knew who this is — it had to, to decide whether to
+   * render the editor at all — so start from its answer. Without it the first
+   * paint is an editor with no Save button, which corrects itself a moment
+   * later and reads as the tool being broken.
+   */
+  const [me, setMe] = useState<Me | null>(initialMe ?? null);
   const [draft, setDraft] = useState<ContentSnapshot | null>(null);
   const [dirty, setDirty] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [save, setSave] = useState<SaveState>({ kind: "idle" });
 
-  // Who is signed in, and may they save. The real gate is the API's; this is
-  // so the editor can say why it is not offering to save.
+  // Re-checked on mount even when the server already answered: a tab left open
+  // outlives its sign-in, and the editor should say so before a save fails.
+  // The real gate is the API's; this is so the editor can explain itself.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me", { cache: "no-store" })
@@ -162,7 +177,7 @@ export default function ManageApp() {
           <SaveStatus state={save} />
           {me && !me.signedIn && (
             <a
-              href="/.auth/login/aad?post_login_redirect_uri=/manage"
+              href={me.loginUrl ?? "/.auth/login/aad?post_login_redirect_uri=/manage"}
               className="flex h-11 items-center rounded-xl bg-ink px-4 text-[13px] text-cream"
             >
               Sign in
@@ -172,6 +187,18 @@ export default function ManageApp() {
             <p className="max-w-[22rem] text-[13px] text-ink-soft">
               Signed in as {me.name}, but without the content manager role, so
               saving is not available.
+            </p>
+          )}
+          {canEdit && me?.name && (
+            <p className="text-[13px] text-ink-faint">
+              {me.name}
+              {" · "}
+              <a
+                href={me.logoutUrl ?? "/.auth/logout?post_logout_redirect_uri=/"}
+                className="underline-offset-4 hover:underline"
+              >
+                Sign out
+              </a>
             </p>
           )}
           {canEdit && (

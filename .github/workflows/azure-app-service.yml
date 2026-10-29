@@ -1,0 +1,76 @@
+# Deploys Lantern Maps to Azure App Service (Linux, Node 22).
+#
+# The site is a Next.js server, not a static export: it renders the current
+# content per request and serves the content API and the sign-in check itself.
+# `output: "standalone"` in next.config.ts bundles that server together with
+# only the dependencies it needs, which is what gets uploaded here.
+#
+# What is NOT in this file, because it would be in source control:
+#
+#   AZURE_STORAGE_CONNECTION_STRING — set it in the App Service configuration
+#   (Portal → the App Service → Settings → Environment variables).
+#
+# Sign-in is App Service "Easy Auth" (Portal → the App Service → Settings →
+# Authentication) with Microsoft Entra ID, which authenticates at the edge and
+# passes the result to the app. Nothing about it belongs here either.
+#
+# Deployment uses a publish profile: Portal → the App Service → Get publish
+# profile, then paste the file into the repository secret
+# AZURE_WEBAPP_PUBLISH_PROFILE.
+name: Deploy to Azure App Service
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # The App Service name, as it appears in the Azure portal.
+  AZURE_WEBAPP_NAME: lantern-maps
+  NODE_VERSION: "22"
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build and deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Check
+        run: |
+          npm run lint
+          npx tsc --noEmit
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Assemble the standalone server
+        # `output: "standalone"` emits the server and its dependencies but
+        # deliberately leaves out the static assets and anything in public/,
+        # on the assumption they are served from a CDN. They are not here, so
+        # they have to be copied in or the site loads without its CSS, its
+        # icons and its service worker.
+        run: |
+          cp -r public .next/standalone/
+          cp -r .next/static .next/standalone/.next/
+
+      - name: Deploy
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+          package: .next/standalone

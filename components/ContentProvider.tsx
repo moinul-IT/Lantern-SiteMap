@@ -58,10 +58,12 @@ const ContentContext = createContext<ContentIndex | null>(null);
 /**
  * The single place every view reads site and org-chart content from.
  *
- * It starts from `SEED_CONTENT`, which is compiled into the bundle, so the
- * first paint is immediate, works with no network, and is identical to what
- * this build shipped with. Once mounted it asks the API for a saved snapshot
- * and swaps it in if one comes back newer.
+ * It starts from whatever the server rendered into the page, falling back to
+ * `SEED_CONTENT`, which is compiled into the bundle. Either way the first paint
+ * is immediate and needs no network. Once mounted it asks the API for a saved
+ * snapshot and swaps it in if one comes back newer — which still matters with
+ * server rendering, because the service worker can serve a cached copy of the
+ * HTML and that copy carries the content it had when it was cached.
  *
  * That ordering is what keeps the offline story intact. The app never waits on
  * the network to draw the map: a cold launch in a basement with no signal still
@@ -72,8 +74,16 @@ const ContentContext = createContext<ContentIndex | null>(null);
  * content-manager role — and an editor that mutates this in memory alone would
  * be worse than none, since it looks saved and is not.
  */
-export default function ContentProvider({ children }: { children: ReactNode }) {
-  const [snapshot, setSnapshot] = useState<ContentSnapshot>(SEED_CONTENT);
+export default function ContentProvider({
+  children,
+  initial,
+}: {
+  children: ReactNode;
+  initial?: ContentSnapshot;
+}) {
+  const [snapshot, setSnapshot] = useState<ContentSnapshot>(
+    initial ?? SEED_CONTENT,
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -81,15 +91,28 @@ export default function ContentProvider({ children }: { children: ReactNode }) {
     (async () => {
       /*
        * Show the newest thing already on this device before going to the
-       * network: whatever was fetched last time, if it beats the build. This is
-       * what an offline launch gets, and it removes the flash of build-era
-       * content on a slow connection.
+       * network: whatever was fetched last time, if it beats what arrived with
+       * the page. This is what an offline launch gets, and it removes the flash
+       * of stale content on a slow connection.
        */
       const cached = readCachedSnapshot();
       if (cached) {
         setSnapshot((current) =>
           cached.version > current.version ? cached : current,
         );
+      }
+
+      /*
+       * Content the server rendered into this page was current as of the
+       * request, so it belongs in the offline cache too — otherwise a device
+       * that only ever loads the page keeps falling back to the build, since
+       * nothing but a successful fetch used to write the cache. Compared on
+       * version, and only after reading, so a cached copy that is somehow
+       * newer (the service worker can serve HTML it cached days ago) is not
+       * overwritten by an older one.
+       */
+      if (initial && initial.version > (cached?.version ?? -1)) {
+        cacheSnapshot(initial);
       }
 
       try {
@@ -122,6 +145,9 @@ export default function ContentProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => controller.abort();
+    // `initial` arrives with the HTML and never changes for the life of the
+    // page, so this stays a mount-only effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const index = useMemo(() => buildContentIndex(snapshot), [snapshot]);
