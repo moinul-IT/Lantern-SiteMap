@@ -25,37 +25,47 @@ npm run build
 npm run lint
 ```
 
-## Deploy to Netlify
+## Deploy
 
-The repo already contains `netlify.toml`, so no build settings need to be typed
-into the dashboard.
+The site is a **static export** (`out/`) plus an **Azure Functions API** (`api/`),
+deployed together to one Azure Static Web App. The management tool ships inside
+the same app at `/manage`, so there is one thing to deploy and one place content
+is edited.
 
-**Option A — connect the Git repo (recommended, gives you deploy-on-push):**
+### What to create in Azure, once
 
-1. Push this repo to GitHub.
-2. In Netlify: **Add new site → Import an existing project**, pick the repo.
-3. Netlify reads `netlify.toml` and installs `@netlify/plugin-nextjs`
-   automatically. Leave build command and publish directory as detected.
-4. **Deploy site.**
+1. **Storage account** → a Table called `content` (the API creates it on first
+   save if it is missing). Any region, Standard LRS is ample: the whole document
+   is about 35KB.
+2. **Static Web App**, created from this GitHub repo. Azure adds the
+   `AZURE_STATIC_WEB_APPS_API_TOKEN` secret to the repo and commits a workflow;
+   this repo already has one at `.github/workflows/azure-static-web-apps.yml`,
+   so delete whichever it adds and keep this one. Build settings come from the
+   workflow, not the portal.
+3. **Application settings** on the Static Web App → add
+   `AZURE_STORAGE_CONNECTION_STRING`, the storage account's connection string.
+   It is the one secret, and it belongs here rather than in the repo.
+4. **Authentication** → the built-in Entra ID (`aad`) provider. Nothing to
+   configure in code; `/.auth/login/aad` exists as soon as the app does.
+5. **Role assignment** → invite each content manager and give them the role
+   `contentmanager`, spelled exactly. Everyone else can read the site and will
+   be refused the editor.
 
-**Option B — deploy from this machine with the CLI:**
+`staticwebapp.config.json` carries the rest: which routes need the role, the
+service-worker cache headers, and the MIME types.
 
-```bash
-npm install -g netlify-cli
-```
+### Deploying
 
-```bash
-netlify deploy --build
-```
+Push to `main`. The workflow builds the site, runs lint and the API tests, and
+uploads `out/` and `api/` together. Pull requests get their own preview
+environment, torn down on close.
 
-That publishes a draft URL. When it looks right, promote to production:
+### While the move happens
 
-```bash
-netlify deploy --build --prod
-```
-
-No environment variables are required — the basemap needs no key and all site
-coordinates are baked into the source. See **Basemap** below.
+`netlify.toml` still points at `out/`, so the existing Netlify deploy keeps
+working and serves the site from the same build. It has no API, so the content
+manager and saved content only exist on the Azure side. Once DNS points at the
+Static Web App, that file and the Netlify site can go.
 
 ## Structure
 
@@ -82,6 +92,8 @@ components/
   Legend.tsx        bottom-left borough legend with counts
   TitleBlock.tsx    eyebrow + title + animated live count
   DirectionsButton.tsx  directions split button + Apple/Google chooser
+  ContentProvider.tsx   the one place every view reads content from
+  manage/ManageApp.tsx  the content manager's editor, served at /manage
   PwaChrome.tsx     mounts the three PWA pills once, in the root layout
   ServiceWorkerRegistrar.tsx  registers /sw.js, offers a reload on update
   InstallPrompt.tsx add-to-home-screen pill (+ iOS Safari instructions)
@@ -92,6 +104,13 @@ lib/
   filter.ts         search + borough filtering
   marker.ts         borough-coloured divIcon builder
   directions.ts     Apple/Google directions URLs + the remembered choice
+api/                Azure Functions, deployed as the Static Web App's API
+  src/functions/content.js  GET the snapshot (anyone), PUT it (content managers)
+  src/functions/me.js       who is signed in, and may they edit
+  src/lib/store.js          Table Storage: one chunked, versioned document
+  src/lib/validate.js       refuses content that would break the site
+  src/lib/principal.js      reads the role from the SWA principal header
+  test/api.test.js          runs with `npm test` in api/
 public/
   sw.js             service worker: app shell, static assets, map tiles
   offline.html      standalone fallback for a cold launch with no network
@@ -430,6 +449,53 @@ component falls back to that same block rather than a broken image.
   yet" note. Point it at the real record system when there is one.
 - **All 21 `photo` fields are `null`**, so every site currently shows the
   monogram placeholder.
+
+## Managing content
+
+`/manage`, inside the same Static Web App as the site it edits, restricted to
+the `contentmanager` role.
+
+It edits one site at a time — name, address, borough, type, map cluster, photo,
+and the coordinates behind a disclosure, since those were geocoded by hand and
+changing an address does not move the pin. Below that, the site's program staff
+(add, remove, reorder, retitle, mark Vacant), its Grant Analyst, procurement
+cluster and contract. At the bottom, which VP covers each cluster, and the VPs'
+own names and titles.
+
+Three things it does on purpose:
+
+- **It starts from what is published**, not from the build. ContentProvider
+  hydrates a moment after mount, so the editor waits for that before seeding its
+  draft — otherwise a manager would be editing the version in the bundle and
+  overwrite whatever was saved since.
+- **It refuses to merge.** Every save carries the version it started from, and
+  the API rejects it if anything was saved meanwhile. Accepting would erase the
+  other person's change with neither of them knowing. The editor says so and
+  asks for a reload.
+- **The role is checked twice.** `staticwebapp.config.json` keeps non-managers
+  off the route, and `PUT /api/content` checks the principal again before
+  writing. The route rule hides the page; the API check is what protects the
+  data, and it is the one that would still hold if a rule were widened by
+  accident.
+
+The API also validates before storing: no sites, a site without coordinates or
+outside New York, a duplicate id, a cluster pointing at a VP that does not
+exist, an invalid staff role, an empty name — all refused with the reasons, and
+nothing written. Once a bad document is in the table every visitor gets it, so
+"the map went blank for everyone" would otherwise be one save away.
+
+### Where it is stored
+
+One row in Table Storage: partition `snapshot`, row `current`, holding the whole
+document as JSON split across `chunk0..N` because a Table property caps at 32K
+characters. One row rather than an entity per record because a save is a unit —
+a half-applied write that moved a site into a cluster but not its VP would be
+worse than a rejected one. The row also keeps `version` and who saved it.
+
+Nothing saved yet is the normal state of a new deployment: `GET /api/content`
+answers 404 and the site runs on the snapshot compiled into its build until a
+content manager saves for the first time. That first save is also what seeds the
+table — there is no separate seeding step.
 
 ## Content: where the data lives
 

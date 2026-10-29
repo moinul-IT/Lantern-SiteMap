@@ -15,6 +15,10 @@ const eslintConfig = defineConfig([
     // MapLibre's minified worker, copied out of node_modules on predev/prebuild
     // by scripts/copy-maplibre-worker.mjs. Not ours, and not readable anyway.
     "public/maplibre/**",
+    // The Azure Functions app is a separate CommonJS Node project with its own
+    // dependencies and its own tests (`npm test` in api/). Linting it with the
+    // Next config only objects to `require()`, which is correct there.
+    "api/**",
   ]),
 ]);
 

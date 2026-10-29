@@ -1,5 +1,11 @@
 import type { MetadataRoute } from "next";
 
+/*
+ * Required by `output: "export"`: a metadata route has to say it is generated
+ * at build time rather than per request.
+ */
+export const dynamic = "force-static";
+
 /**
  * Web app manifest. Next serves this at /manifest.webmanifest and injects the
  * <link rel="manifest"> automatically, so nothing in layout.tsx references it.

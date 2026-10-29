@@ -1,28 +1,26 @@
+# Kept so the existing Netlify deploy keeps working while the move to Azure
+# Static Web Apps happens. The app is a static export now, so there is no
+# Next.js runtime to wire up and no plugin needed — just the exported folder.
+#
+# Once the Static Web App is live and DNS points at it, this file and the
+# Netlify site can go.
 [build]
   command = "npm run build"
-  publish = ".next"
-
-# Netlify's build image supplies this plugin for Next.js sites; it wires up
-# the App Router, image optimisation, and serverless handlers.
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+  publish = "out"
 
 [build.environment]
   # Next 16 requires >= 20.9
   NODE_VERSION = "22"
 
-# The service worker must be revalidated on every request: a cached copy of
-# sw.js means a deploy can go unnoticed for as long as it stays fresh. Netlify
-# serves files from public/ off its CDN, so the matching rule in
-# next.config.ts (which only covers `next start`) does not apply here.
+# The service worker must be revalidated on every request, or a deploy can go
+# unnoticed for as long as a cached copy stays fresh.
 [[headers]]
   for = "/sw.js"
   [headers.values]
     Cache-Control = "no-cache, no-store, must-revalidate"
 
-# Stable filenames rather than hashed ones, so this is a week rather than a
-# year: long enough that a launcher icon is not refetched, short enough that
-# redrawing the mark lands without renaming every file.
+# The content API lives on Azure; Netlify only ever serves the static site, so
+# there is nothing here to proxy.
 [[headers]]
   for = "/icons/*"
   [headers.values]
