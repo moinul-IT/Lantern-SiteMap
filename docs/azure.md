@@ -75,9 +75,63 @@ B1 is also the cheapest tier that offers **Always On**, which matters: without
 it App Service unloads the app after 20 minutes idle and the next visitor waits
 through a cold Node start.
 
-Roughly **$13–15/month** for B1 in a US region, plus a few cents for storage.
-The free F1 tier will technically run it but has no Always On and a 60
-CPU-minutes/day quota, so it is only worth it for a throwaway test.
+---
+
+## What it costs, and how not to pay it
+
+**About $13/month**, which is one App Service plan in a US region. Everything
+else rounds to nothing: the content is a single 35KB row read a few hundred
+times a day, so storage and transactions come to a few cents.
+
+That whole figure is "a Linux machine that stays switched on". It is not
+traffic, and it is not Azure being expensive — it is the difference between
+serving files and running a process. Netlify was free because a static export
+is files on a CDN: nobody is holding a server for you. Sign-in and content that
+people edit need something running to check who is asking and to read the
+current document, and that something has a monthly price whether anyone visits
+or not.
+
+So the honest trade is: $13/month buys the thing that was asked for. The
+options below are about who pays it.
+
+### Check the nonprofit grant first
+
+Microsoft gives eligible nonprofits **$2,000/year in Azure credits**. B1 is
+about **$158/year** — roughly a twelfth of the grant, with the rest spare. If
+Lantern is already on Microsoft 365 for Nonprofits the tenant is likely
+verified already, and the grant is claimed in the Nonprofit Portal under
+Nonprofit Grants.
+
+If that lands, stop reading this section and use B1.
+
+### If it does not
+
+| Option | Cost | What you give up |
+|---|---|---|
+| **B1** (what this runbook sets up) | ~$13/mo | Nothing |
+| **F1 Free tier** | $0 | A daily CPU quota that **stops the app** when spent, no Always On, no custom domain |
+| **Azure Container Apps** | ~$0 for this traffic | A Dockerfile and a registry to maintain; cold starts from zero |
+
+**F1** is tempting and is the one to be careful with. The quota is not a
+throttle — when an app on Free or Shared exceeds it, App Service stops the app
+until the quota resets at midnight UTC. This site renders every page on the
+server, which costs more CPU than the static export did, so the quota is closer
+than it looks. It is fine for a demo and a poor bet for something staff rely on.
+
+**Container Apps** is the genuinely cheap one. It scales to zero and the free
+grant is 180,000 vCPU-seconds, 360,000 GiB-seconds and 2 million requests per
+subscription per month — far more than an internal tool for a few dozen staff
+will use. Easy Auth works there too, with the same header this app already
+reads, so the application code would not change. The cost is in the plumbing: a
+container image, somewhere to push it, and a visitor occasionally waiting for a
+cold start after a quiet spell.
+
+### Things that would cost more, and are not needed
+
+Nothing here needs a database (one Table row), a CDN (App Service serves the
+static assets fine at this traffic), Front Door, or a higher tier for
+scale. If a bill arrives larger than about $15, something has been created that
+this app does not use.
 
 ---
 
