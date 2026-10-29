@@ -18,6 +18,41 @@ import {
 /** Where the content manager's saved snapshot is served from. */
 export const CONTENT_ENDPOINT = "/api/content";
 
+/**
+ * The last snapshot this browser successfully fetched.
+ *
+ * Without it, the fallback is the snapshot compiled into the build — correct on
+ * the day it shipped, and increasingly wrong after that as content managers
+ * edit. A phone opened in a basement would show the org chart as it stood at
+ * the last deploy rather than the last time that phone had signal.
+ *
+ * localStorage rather than the service worker cache because the worker
+ * deliberately never caches /api/: a cached *response* would be served to a
+ * page that has no idea it is stale, whereas this is a labelled fallback the
+ * code picks between on version.
+ */
+const CACHE_KEY = "lantern-maps:content";
+
+function readCachedSnapshot(): ContentSnapshot | null {
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    return isContentSnapshot(parsed) ? parsed : null;
+  } catch {
+    // Unavailable (private browsing), or junk left by an older version.
+    return null;
+  }
+}
+
+function cacheSnapshot(snapshot: ContentSnapshot) {
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(snapshot));
+  } catch {
+    // Full or unavailable. The app still works; it just falls back further.
+  }
+}
+
 const ContentContext = createContext<ContentIndex | null>(null);
 
 /**
@@ -44,6 +79,19 @@ export default function ContentProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
 
     (async () => {
+      /*
+       * Show the newest thing already on this device before going to the
+       * network: whatever was fetched last time, if it beats the build. This is
+       * what an offline launch gets, and it removes the flash of build-era
+       * content on a slow connection.
+       */
+      const cached = readCachedSnapshot();
+      if (cached) {
+        setSnapshot((current) =>
+          cached.version > current.version ? cached : current,
+        );
+      }
+
       try {
         // no-store: this is the one thing in the app that must not come from a
         // cache. A content manager's edit showing up on the next launch but not
@@ -65,10 +113,11 @@ export default function ContentProvider({ children }: { children: ReactNode }) {
         setSnapshot((current) =>
           body.version > current.version ? body : current,
         );
+        cacheSnapshot(body);
       } catch {
-        // Offline, no API deployed yet, or the request was aborted. The seed is
-        // already on screen and is a correct answer, so there is nothing to do
-        // and nothing worth alarming anyone about.
+        // Offline, no API deployed yet, or the request was aborted. Whatever
+        // was cached above — or the build's own snapshot — is already on screen
+        // and is a correct answer, so there is nothing to do.
       }
     })();
 
