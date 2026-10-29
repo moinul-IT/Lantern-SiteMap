@@ -72,12 +72,15 @@ It is hosted rather than exported because people edit it. An exported build
 freezes the content as it stood when the build ran: a correction would not
 appear until someone redeployed. Here the next page load already has it.
 
+**Full setup, verification and troubleshooting: [docs/azure.md](docs/azure.md).**
+The short version:
+
 ### What to create in Azure, once
 
 1. **Storage account** → a Table called `content` (the app creates it on first
-   save if it is missing). Any region, Standard LRS is ample: the whole document
-   is about 35KB.
-2. **App Service** → Linux, Node 22 LTS. B1 is enough; it is an internal tool.
+   save if it is missing). Standard LRS is ample: the whole document is about
+   35KB.
+2. **App Service** → Linux, Node 22 LTS, B1. Turn **Always On** on.
 3. **Startup command** → `node server.js`, under Settings → Configuration.
    This one is not optional. The deployed folder carries a `package.json` whose
    `start` script is `next start`, which is wrong for a standalone build, and
@@ -88,8 +91,8 @@ appear until someone redeployed. Here the next page load already has it.
    here rather than in the repo.
 5. **Authentication** ("Easy Auth") → add Microsoft Entra ID as the identity
    provider, and set unauthenticated requests to be **allowed** rather than
-   redirected: the map itself is open to everyone on the network, and only
-   `/manage` and saving require signing in. Nothing to configure in code;
+   redirected: the map itself is open to everyone who can reach the site, and
+   only `/manage` and saving require signing in. Nothing to configure in code;
    `/.auth/login/aad` exists as soon as authentication does.
 6. **App roles** → in the app registration, create an app role with the value
    `contentmanager`, spelled exactly, and assign it to each content manager.
@@ -113,7 +116,8 @@ only reason the app can believe it without verifying a token — and it holds
 only while the app is unreachable except through App Service.
 
 So the server refuses to believe the header at all unless it can tell something
-is authenticating in front of it: App Service's own `WEBSITE_AUTH_ENABLED`, or
+is authenticating in front of it: `WEBSITE_AUTH_ENABLED`, which App Service
+injects as a read-only setting when authentication is on, or
 `TRUST_AUTH_HEADER=1` set by hand for another host that does the same job. A
 deployment that forgets to turn authentication on fails closed — nobody can
 sign in or save — rather than open.
@@ -125,10 +129,11 @@ serve it: `netlify.toml` and its `out/` directory are gone. Cut over in this
 order, or the site goes dark in between:
 
 1. Deploy to App Service and check it on its `azurewebsites.net` address.
-2. Point DNS at App Service.
-3. Merge this branch to `main` and delete the Netlify site.
+2. Add the custom domain to App Service and let it issue a certificate.
+3. Point DNS at App Service.
+4. Merge this branch to `main` and delete the Netlify site.
 
-Until step 3, `main` still builds the static export and Netlify keeps serving
+Until step 4, `main` still builds the static export and Netlify keeps serving
 it, unchanged.
 
 ## Structure

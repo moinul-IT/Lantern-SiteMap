@@ -19,10 +19,20 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Netlify exposes the deploy URL as URL; falls back to localhost in dev.
+/*
+ * Where this deployment lives, for metadataBase and the Open Graph tags.
+ *
+ * NEXT_PUBLIC_SITE_URL is read at build time, so it is the one to set once the
+ * site has a real domain — it is also the only one the prerendered metadata
+ * routes can see. Failing that, App Service injects its own hostname as
+ * WEBSITE_HOSTNAME, which is right for the azurewebsites.net address and costs
+ * no configuration. Then localhost, for `next dev`.
+ */
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  process.env.URL ??
+  (process.env.WEBSITE_HOSTNAME
+    ? `https://${process.env.WEBSITE_HOSTNAME}`
+    : undefined) ??
   "http://localhost:3000";
 
 const description =

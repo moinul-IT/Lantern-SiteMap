@@ -56,6 +56,13 @@ jobs:
         run: npm test
 
       - name: Build
+        # NEXT_PUBLIC_SITE_URL is baked in at build time, so it has to be set
+        # here rather than in the App Service configuration. Set it as a
+        # repository variable once the site has a real domain; without it the
+        # server falls back to the azurewebsites.net hostname App Service
+        # injects, which is correct but not what you want on a share card.
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ vars.SITE_URL }}
         run: npm run build
 
       - name: Assemble the standalone server
